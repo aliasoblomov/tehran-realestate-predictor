@@ -177,6 +177,8 @@ def scrape_live_rates() -> dict:
                             text = t.get_text(strip=True).replace(",", "")
                             try:
                                 val = float("".join(c for c in text if c.isdigit() or c == "."))
+                                if 10_000 < val < 150_000:
+                                    val *= 10  # convert Toman to Rial
                                 if val > 100_000:
                                     result[key] = val
                                     break

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   DollarSign,
   TrendingUp,
@@ -28,17 +29,9 @@ interface ResultCardProps {
   isLoading: boolean;
 }
 
-function formatIRR(amount: number): string {
-  if (amount >= 1_000_000_000_000) {
-    return `${(amount / 1_000_000_000_000).toFixed(2)} T`;
-  }
-  if (amount >= 1_000_000_000) {
-    return `${(amount / 1_000_000_000).toFixed(2)} B`;
-  }
-  if (amount >= 1_000_000) {
-    return `${(amount / 1_000_000).toFixed(2)} M`;
-  }
-  return amount.toLocaleString("en-US");
+function formatMillionTomans(amount: number): string {
+  const tomans = amount / 10_000_000;
+  return tomans.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
 function formatFull(amount: number): string {
@@ -104,23 +97,32 @@ function Metric({ label, value, subValue, color, icon, delay = 0 }: MetricProps)
 
 export default function ResultCard({ result, error, isLoading }: ResultCardProps) {
   // Loading skeleton state
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const loadingMessages = [
+    "Connecting to BigQuery...",
+    "Calculating distances to Metro...",
+    "Running XGBoost models...",
+    "Finalizing valuation..."
+  ];
+
+  useEffect(() => {
+    if (!isLoading) return;
+    const int = setInterval(() => {
+      setLoadingMsgIdx((prev) => (prev + 1) % loadingMessages.length);
+    }, 1500);
+    return () => clearInterval(int);
+  }, [isLoading]);
+
   if (isLoading) {
     return (
       <div
         className="glass-card"
-        style={{ padding: "28px", display: "flex", flexDirection: "column", gap: "20px" }}
+        style={{ padding: "28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "20px", minHeight: "250px" }}
       >
-        <div className="skeleton" style={{ height: "20px", width: "180px" }} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div className="skeleton" style={{ height: "12px", width: "80px" }} />
-              <div className="skeleton" style={{ height: "28px", width: "100%" }} />
-              <div className="skeleton" style={{ height: "10px", width: "60px" }} />
-            </div>
-          ))}
+        <div className="animate-spin-slow" style={{ width: "40px", height: "40px", border: "3px solid rgba(245,158,11,0.2)", borderTopColor: "#f59e0b", borderRadius: "50%" }} />
+        <div style={{ color: "#94a3b8", fontSize: "0.9rem", fontWeight: 600 }} className="animate-fadeUp" key={loadingMsgIdx}>
+          {loadingMessages[loadingMsgIdx]}
         </div>
-        <div className="skeleton" style={{ height: "60px", borderRadius: "12px" }} />
       </div>
     );
   }
@@ -301,7 +303,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px" }}>
         <Metric
           label="Base Price / m²"
-          value={`${formatIRR(result.base_price_per_sqm)} IRR`}
+          value={`${formatMillionTomans(result.base_price_per_sqm)} M Tomans`}
           subValue="Macro model output"
           color="#94a3b8"
           icon={<BarChart3 size={12} />}
@@ -317,7 +319,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
         />
         <Metric
           label="Final / m²"
-          value={`${formatIRR(result.final_price_per_sqm)} IRR`}
+          value={`${formatMillionTomans(result.final_price_per_sqm)} M Tomans`}
           subValue={`≈ $${(result.final_price_per_sqm / result.usd_rate).toFixed(0)}/m²`}
           color="#f59e0b"
           icon={<DollarSign size={12} />}
@@ -356,7 +358,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
             className="gradient-text"
             style={{ fontSize: "1.75rem", fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1 }}
           >
-            {formatIRR(result.final_total_price)} IRR
+            {formatMillionTomans(result.final_total_price)} M Tomans
           </div>
           <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
             {formatFull(result.final_total_price)} Rials &nbsp;·&nbsp; ≈ ${usdPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })} USD
@@ -379,7 +381,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
             <div key={label}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
                 <span style={{ fontSize: "0.65rem", color: "#64748b" }}>{label}</span>
-                <span style={{ fontSize: "0.65rem", color, fontWeight: 700 }}>{formatIRR(val)}</span>
+                <span style={{ fontSize: "0.65rem", color, fontWeight: 700 }}>{formatMillionTomans(val)}</span>
               </div>
               <div
                 style={{

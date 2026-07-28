@@ -258,6 +258,7 @@ export default function PredictionForm({
         gap: "20px",
         height: "100%",
         overflowY: "auto",
+        overflowX: "hidden",
         paddingRight: "2px",
       }}
     >

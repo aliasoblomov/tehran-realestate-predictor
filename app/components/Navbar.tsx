@@ -113,7 +113,7 @@ export default function Navbar({ usdRate }: NavbarProps) {
                 fontWeight: 500,
               }}
             >
-              USD/IRR:&nbsp;
+              USD:&nbsp;
             </span>
             {usdRate ? (
               <span
@@ -123,7 +123,7 @@ export default function Navbar({ usdRate }: NavbarProps) {
                   color: "#f59e0b",
                 }}
               >
-                {usdRate.toLocaleString("en-US")}
+                {(usdRate / 10).toLocaleString("en-US")} Tomans
               </span>
             ) : (
               <span

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 interface MapComponentProps {
   onLocationSelect: (lat: number, lon: number) => void;
@@ -19,6 +19,7 @@ export default function MapComponent({
   const mapInstanceRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = useRef<any>(null);
+  const [address, setAddress] = useState<string | null>(null);
 
   const initMap = useCallback(async () => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -47,11 +48,14 @@ export default function MapComponent({
       zoom: 12,
       zoomControl: true,
       attributionControl: false,
+      maxBounds: [[35.5, 51.1], [35.9, 51.8]],
+      maxBoundsViscosity: 1.0,
+      minZoom: 11,
     });
 
     // Dark-themed tile layer (CartoDB Dark Matter)
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
       {
         maxZoom: 19,
         subdomains: "abcd",
@@ -97,15 +101,13 @@ export default function MapComponent({
     });
 
     // Click handler
-    map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
+    map.on("click", async (e: { latlng: { lat: number; lng: number } }) => {
       const { lat, lng } = e.latlng;
 
-      // Remove old marker
       if (markerRef.current) {
         markerRef.current.remove();
       }
 
-      // Place new marker
       const marker = L!.marker([lat, lng], { icon: goldIcon })
         .addTo(map)
         .bindPopup(
@@ -114,6 +116,7 @@ export default function MapComponent({
             <div style="font-weight:700; color:#f59e0b; font-size:0.82rem;">
               ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E
             </div>
+            <div id="popup-address" style="font-size:0.65rem; color:#64748b; margin-top:6px;">Fetching address...</div>
           </div>`,
           { closeButton: false }
         )
@@ -121,6 +124,28 @@ export default function MapComponent({
 
       markerRef.current = marker;
       onLocationSelect(lat, lng);
+      setAddress(null);
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fa`);
+        const data = await res.json();
+        const addr = data.display_name || "Unknown Address";
+        setAddress(addr);
+        
+        // Update popup if still open
+        const popupContent = `<div style="text-align:center; padding: 4px 0;">
+            <div style="font-size:0.7rem; color:#94a3b8; margin-bottom:4px;">Selected Location</div>
+            <div style="font-weight:700; color:#f59e0b; font-size:0.82rem;">
+              ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E
+            </div>
+            <div style="font-size:0.65rem; color:#64748b; margin-top:6px; max-width: 150px; line-height: 1.3;">
+              ${addr}
+            </div>
+          </div>`;
+        marker.setPopupContent(popupContent);
+      } catch (err) {
+        // ignore
+      }
     });
 
     // Tehran district overlay label
@@ -238,6 +263,11 @@ export default function MapComponent({
           <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#2dd4bf" }}>
             {selectedLocation.lon.toFixed(5)}° E
           </div>
+          {address && (
+            <div style={{ fontSize: "0.65rem", color: "#94a3b8", marginTop: "4px", maxWidth: "160px", lineHeight: 1.2 }}>
+              {address}
+            </div>
+          )}
         </div>
       )}
     </div>
