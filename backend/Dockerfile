@@ -1,5 +1,5 @@
 # Dockerfile for Tehran Real Estate Predictor — FastAPI Backend
-# Optimized for Hugging Face Spaces deployment
+# Optimized for Google Cloud Run deployment
 
 FROM python:3.11-slim
 
@@ -21,8 +21,8 @@ COPY main.py .
 # Copy model files (place them in backend/models/ before building)
 COPY models/ ./models/
 
-# Expose port (Cloud Run sets $PORT automatically, defaults to 8080)
+# Expose port 8080 for Cloud Run
 EXPOSE 8080
 
-# Run with uvicorn using dynamic $PORT
+# Run with uvicorn using $PORT for Cloud Run
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
