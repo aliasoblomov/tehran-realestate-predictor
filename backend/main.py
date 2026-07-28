@@ -194,19 +194,11 @@ def scrape_live_rates() -> dict:
 # ─────────────────────────────────────────────────────────
 def get_bq_client():
     from google.cloud import bigquery
-    from google.oauth2 import service_account
 
-    creds_raw = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if not creds_raw:
-        raise EnvironmentError("GOOGLE_CREDENTIALS_JSON env var is not set.")
-
-    creds_dict = json.loads(creds_raw)
-    credentials = service_account.Credentials.from_service_account_info(
-        creds_dict,
-        scopes=["https://www.googleapis.com/auth/bigquery.readonly"],
-    )
-    project_id = creds_dict.get("project_id", "siavak-temp-aliz")
-    return bigquery.Client(credentials=credentials, project=project_id)
+    # Cloud Run: uses Application Default Credentials (ADC) automatically.
+    # The service account attached to the Cloud Run revision must have
+    # roles/bigquery.dataViewer (or broader) granted in IAM.
+    return bigquery.Client(project="siavak-temp-aliz")
 
 
 def _tbl(name: str) -> str:
@@ -426,7 +418,7 @@ def health():
     return {
         "status": "ok",
         "models_loaded": "macro" in _cache,
-        "bq_credentials_set": bool(os.environ.get("GOOGLE_CREDENTIALS_JSON")),
+        "auth_mode": "Application Default Credentials (Cloud Run ADC)",
     }
 
 
