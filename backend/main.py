@@ -258,132 +258,141 @@ def fetch_region_id(client, neighborhood_slug: str) -> int:
 
 
 def fetch_spatial_features(client, lat: float, lon: float) -> dict:
+    # Strip Z/M/ZM coordinate dimensions from WKT geometry — BigQuery ST_GeogFromText
+    # does not support Z or M extensions (e.g. "LINESTRING (x y z)").
+    # This is the exact approach used in the training notebook (Cell 13).
+    strip_z = (
+        "REGEXP_REPLACE("
+        "REPLACE(REPLACE(geometry_wkt, ' Z', ''), ' ZM', ''), "
+        r"r'([0-9eE.\-]+\s+[0-9eE.\-]+)\s+[0-9eE.\-]+(?:\s+[0-9eE.\-]+)?', "
+        r"r'\1')"
+    )
+
     query = f"""
         WITH user_point AS (SELECT ST_GEOGPOINT({lon}, {lat}) AS pt),
 
-        -- ref_metro_stations: latitude/longitude are FLOAT columns
-        metro_dist AS (
+        -- ref_metro_stations: latitude/longitude are FLOAT — use ST_DWITHIN(10km) then MIN
+        metro_calc AS (
             SELECT MIN(ST_DISTANCE(
-                ST_GEOGPOINT(longitude, latitude),
+                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point)
-            )) AS dist FROM {_tbl('ref_metro_stations')}
-        ),
-
-        -- ref_highways: no lat/lon columns — geometry stored in geometry_wkt
-        highway_dist AS (
-            SELECT MIN(ST_DISTANCE(
-                ST_GEOGFROMTEXT(geometry_wkt),
-                (SELECT pt FROM user_point)
-            )) AS dist FROM {_tbl('ref_highways')}
-        ),
-
-        -- ref_commercial_points: latitude/longitude are FLOAT columns
-        comm_density AS (
-            SELECT COUNT(*) AS cnt FROM {_tbl('ref_commercial_points')}
+            )) AS dist
+            FROM `{BQ_DATASET}.ref_metro_stations`
             WHERE ST_DWITHIN(
-                ST_GEOGPOINT(longitude, latitude),
+                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                (SELECT pt FROM user_point), 10000
+            )
+        ),
+
+        -- ref_highways: geometry_wkt has Z/M dimensions — strip them before ST_GeogFromText
+        hwy_geom AS (
+            SELECT ST_GEOGFROMTEXT({strip_z}) AS geom
+            FROM `{BQ_DATASET}.ref_highways`
+        ),
+        hwy_calc AS (
+            SELECT MIN(ST_DISTANCE(h.geom, (SELECT pt FROM user_point))) AS dist
+            FROM hwy_geom h
+            WHERE ST_DWITHIN(h.geom, (SELECT pt FROM user_point), 5000)
+        ),
+
+        -- ref_commercial_points: latitude/longitude are FLOAT — count within 500m
+        comm_calc AS (
+            SELECT COUNT(*) AS cnt
+            FROM `{BQ_DATASET}.ref_commercial_points`
+            WHERE ST_DWITHIN(
+                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point), 500
             )
         ),
 
-        -- ref_urban_decay: no lat/lon, no decay_class column
-        -- geometry_wkt holds decay-zone polygons; count intersecting zones as proxy
-        urban_decay AS (
-            SELECT CAST(COUNT(*) AS INT64) AS decay_class
-            FROM {_tbl('ref_urban_decay')}
-            WHERE ST_INTERSECTS(
-                ST_GEOGFROMTEXT(geometry_wkt),
-                (SELECT pt FROM user_point)
-            )
+        -- ref_urban_decay: geometry_wkt has Z/M — strip, then intersect.
+        -- decay_class derived from decay_zone_name (exact notebook CASE logic).
+        decay_geom AS (
+            SELECT
+                ST_GEOGFROMTEXT({strip_z}) AS geom,
+                CASE
+                    WHEN decay_zone_name = 'فرسوده' THEN 4
+                    WHEN decay_zone_name LIKE '%-%' THEN 3
+                    WHEN decay_zone_name IN ('ریزدانگی', 'ناپایداری', 'نفوذناپذیری') THEN 2
+                    WHEN decay_zone_name = 'سایر' THEN 1
+                    ELSE 0
+                END AS decay_class
+            FROM `{BQ_DATASET}.ref_urban_decay`
+        ),
+        decay_calc AS (
+            SELECT MAX(d.decay_class) AS decay_class
+            FROM decay_geom d
+            WHERE ST_INTERSECTS(d.geom, (SELECT pt FROM user_point))
         ),
 
-        -- ref_air_quality: correct column is long_term_aqi (not aqi)
-        air_quality AS (
-            SELECT long_term_aqi FROM {_tbl('ref_air_quality')}
+        -- ref_air_quality: latitude/longitude are FLOAT — nearest within 20km
+        aqi_calc AS (
+            SELECT long_term_aqi AS aqi
+            FROM `{BQ_DATASET}.ref_air_quality`
+            WHERE ST_DWITHIN(
+                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                (SELECT pt FROM user_point), 20000
+            )
             ORDER BY ST_DISTANCE(
-                ST_GEOGPOINT(longitude, latitude),
+                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point)
-            ) ASC LIMIT 1
-        ),
-
-        -- ref_traffic_zones: no lat/lon — geometry in geometry_wkt
-        -- correct column is traffic_zone_status (not zone_status)
-        traffic AS (
-            SELECT traffic_zone_status FROM {_tbl('ref_traffic_zones')}
-            WHERE ST_WITHIN(
-                (SELECT pt FROM user_point),
-                ST_GEOGFROMTEXT(geometry_wkt)
-            )
+            ) ASC
             LIMIT 1
         ),
 
-        -- ref_seismic_risk: correct column is seismic_risk_level (not risk_level)
-        seismic AS (
-            SELECT seismic_risk_level FROM {_tbl('ref_seismic_risk')}
-            ORDER BY ST_DISTANCE(
-                ST_GEOGPOINT(longitude, latitude),
-                (SELECT pt FROM user_point)
-            ) ASC LIMIT 1
+        -- ref_traffic_zones: geometry_wkt has Z/M — strip, then ST_INTERSECTS. MAX of traffic_zone_status.
+        traffic_geom AS (
+            SELECT
+                ST_GEOGFROMTEXT({strip_z}) AS geom,
+                CAST(traffic_zone_status AS INT64) AS traffic_score
+            FROM `{BQ_DATASET}.ref_traffic_zones`
+        ),
+        traffic_calc AS (
+            SELECT MAX(t.traffic_score) AS traffic_score
+            FROM traffic_geom t
+            WHERE ST_INTERSECTS(t.geom, (SELECT pt FROM user_point))
+        ),
+
+        -- ref_seismic_risk: latitude/longitude are FLOAT — AVG within 500m radius
+        seismic_calc AS (
+            SELECT ROUND(AVG(CAST(seismic_risk_level AS INT64))) AS seismic_risk
+            FROM `{BQ_DATASET}.ref_seismic_risk`
+            WHERE ST_DWITHIN(
+                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                (SELECT pt FROM user_point), 500
+            )
         )
 
         SELECT
-            COALESCE((SELECT dist FROM metro_dist),                {FALLBACK_DIST_MAX})    AS dist_to_metro,
-            COALESCE((SELECT dist FROM highway_dist),              {FALLBACK_DIST_MAX})    AS dist_to_highway,
+            COALESCE((SELECT dist FROM metro_calc),          10000.0) AS dist_to_metro,
+            COALESCE((SELECT dist FROM hwy_calc),             5000.0) AS dist_to_highway,
             ST_DISTANCE(ST_GEOGPOINT({TEHRAN_CBD_LON},{TEHRAN_CBD_LAT}),
-                        ST_GEOGPOINT({lon},{lat}))                                          AS dist_to_cbd,
-            COALESCE((SELECT cnt FROM comm_density),               {FALLBACK_COMM_DENSITY}) AS commercial_density,
-            COALESCE((SELECT decay_class FROM urban_decay),        {FALLBACK_URBAN_DECAY})  AS urban_decay_class,
-            COALESCE((SELECT long_term_aqi FROM air_quality),      {FALLBACK_AIR_QUALITY})  AS air_quality_aqi,
-            COALESCE((SELECT traffic_zone_status FROM traffic),    {FALLBACK_TRAFFIC_ZONE}) AS traffic_zone_status,
-            COALESCE((SELECT seismic_risk_level FROM seismic),     {FALLBACK_SEISMIC_RISK}) AS seismic_risk_level
+                        ST_GEOGPOINT({lon},{lat}))                    AS dist_to_cbd,
+            COALESCE((SELECT cnt FROM comm_calc),                  0) AS commercial_density,
+            COALESCE((SELECT decay_class FROM decay_calc),         0) AS urban_decay_class,
+            COALESCE((SELECT aqi FROM aqi_calc),                 0.0) AS air_quality_aqi,
+            COALESCE((SELECT traffic_score FROM traffic_calc),     0) AS traffic_zone_status,
+            COALESCE((SELECT seismic_risk FROM seismic_calc),      1) AS seismic_risk_level
     """
     rows = list(client.query(query).result())
     if not rows:
         return {
-            "dist_to_metro": FALLBACK_DIST_MAX, "dist_to_highway": FALLBACK_DIST_MAX,
-            "dist_to_cbd": 0.0, "commercial_density": FALLBACK_COMM_DENSITY,
-            "urban_decay_class": FALLBACK_URBAN_DECAY, "air_quality_aqi": float(FALLBACK_AIR_QUALITY),
-            "traffic_zone_status": FALLBACK_TRAFFIC_ZONE, "seismic_risk_level": FALLBACK_SEISMIC_RISK,
+            "dist_to_metro": 10000.0, "dist_to_highway": 5000.0,
+            "dist_to_cbd": 0.0, "commercial_density": 0,
+            "urban_decay_class": 0, "air_quality_aqi": 0.0,
+            "traffic_zone_status": 0, "seismic_risk_level": 1,
         }
     r = rows[0]
     return {
-        "dist_to_metro":       float(r["dist_to_metro"]      or FALLBACK_DIST_MAX),
-        "dist_to_highway":     float(r["dist_to_highway"]    or FALLBACK_DIST_MAX),
+        "dist_to_metro":       float(r["dist_to_metro"]      or 10000.0),
+        "dist_to_highway":     float(r["dist_to_highway"]    or 5000.0),
         "dist_to_cbd":         float(r["dist_to_cbd"]        or 0.0),
-        "commercial_density":  int(r["commercial_density"]   or FALLBACK_COMM_DENSITY),
-        "urban_decay_class":   int(r["urban_decay_class"]    or FALLBACK_URBAN_DECAY),
-        "air_quality_aqi":     float(r["air_quality_aqi"]    or FALLBACK_AIR_QUALITY),
-        "traffic_zone_status": int(r["traffic_zone_status"]  or FALLBACK_TRAFFIC_ZONE),
-        "seismic_risk_level":  int(r["seismic_risk_level"]   or FALLBACK_SEISMIC_RISK),
+        "commercial_density":  int(r["commercial_density"]   or 0),
+        "urban_decay_class":   int(r["urban_decay_class"]    or 0),
+        "air_quality_aqi":     float(r["air_quality_aqi"]    or 0.0),
+        "traffic_zone_status": int(r["traffic_zone_status"]  or 0),
+        "seismic_risk_level":  int(r["seismic_risk_level"]   or 1),
     }
-
-
-
-# ─────────────────────────────────────────────────────────
-# SECTION C: Feature engineering
-# ─────────────────────────────────────────────────────────
-MICRO_COLUMNS = [
-    "has_elevator", "has_parking", "has_warehouse",
-    "is_rebuilt", "is_centroid_imputed", "is_price_converted",
-    "is_villa", "land_size", "building_size", "rooms_count",
-    "building_age", "location_latitude", "location_longitude",
-    "location_radius", "commercial_density", "dist_to_metro",
-    "dist_to_cbd", "dist_to_highway", "seismic_risk_level",
-    "air_quality_aqi", "traffic_zone_status", "urban_decay_class",
-    "floor_elevator_penalty", "value_retention_bonus",
-    "bonus_tod_livability", "penalty_traffic_nuisance",
-    "suburban_metro_dependency", "redevelopment_premium",
-    "highway_sweetspot", "region_id", "floor_num",
-    "total_floors_num", "unit_per_floor_num", "neighborhood_encoded",
-]
-
-MACRO_COLUMNS = (
-    ["Year_Jalali", "USD_Free_Market", "TEDPIX_Index",
-     "USD_Free_Market_Lag_1", "USD_Free_Market_Lag_3",
-     "USD_Free_Market_Lag_6", "TEDPIX_Index_Lag_3"]
-    + [f"region_id_{i}" for i in range(1, 23)]
-)
-
 
 def engineer_micro_features(req: PredictRequest, spatial: dict,
                              region_id: int, neighborhood_encoded: float) -> list:
