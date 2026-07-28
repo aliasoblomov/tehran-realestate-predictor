@@ -394,6 +394,32 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
         "seismic_risk_level":  int(r["seismic_risk_level"]   or 1),
     }
 
+
+# ─────────────────────────────────────────────────────────
+# SECTION C: Feature engineering
+# ─────────────────────────────────────────────────────────
+MICRO_COLUMNS = [
+    "has_elevator", "has_parking", "has_warehouse",
+    "is_rebuilt", "is_centroid_imputed", "is_price_converted",
+    "is_villa", "land_size", "building_size", "rooms_count",
+    "building_age", "location_latitude", "location_longitude",
+    "location_radius", "commercial_density", "dist_to_metro",
+    "dist_to_cbd", "dist_to_highway", "seismic_risk_level",
+    "air_quality_aqi", "traffic_zone_status", "urban_decay_class",
+    "floor_elevator_penalty", "value_retention_bonus",
+    "bonus_tod_livability", "penalty_traffic_nuisance",
+    "suburban_metro_dependency", "redevelopment_premium",
+    "highway_sweetspot", "region_id", "floor_num",
+    "total_floors_num", "unit_per_floor_num", "neighborhood_encoded",
+]
+
+MACRO_COLUMNS = (
+    ["Year_Jalali", "USD_Free_Market", "TEDPIX_Index",
+     "USD_Free_Market_Lag_1", "USD_Free_Market_Lag_3",
+     "USD_Free_Market_Lag_6", "TEDPIX_Index_Lag_3"]
+    + [f"region_id_{i}" for i in range(1, 23)]
+)
+
 def engineer_micro_features(req: PredictRequest, spatial: dict,
                              region_id: int, neighborhood_encoded: float) -> list:
     floor_elevator_penalty   = req.floor_num * (1 - int(req.has_elevator))
