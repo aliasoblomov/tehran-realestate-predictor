@@ -1,5 +1,5 @@
 # Dockerfile for Tehran Real Estate Predictor — FastAPI Backend
-# Optimized for Render.com deployment
+# Optimized for Hugging Face Spaces deployment
 
 FROM python:3.11-slim
 
@@ -21,8 +21,8 @@ COPY main.py .
 # Copy model files (place them in backend/models/ before building)
 COPY models/ ./models/
 
-# Expose port (Render uses $PORT env var)
-EXPOSE 8000
+# Expose port 7860 for Hugging Face Spaces
+EXPOSE 7860
 
-# Run with uvicorn; Render sets $PORT automatically
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Run with uvicorn on port 7860
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
