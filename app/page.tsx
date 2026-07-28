@@ -6,6 +6,11 @@ import Navbar from "./components/Navbar";
 import PredictionForm, { FormValues } from "./components/PredictionForm";
 import ResultCard, { PredictionResult } from "./components/ResultCard";
 
+// FastAPI backend URL — set NEXT_PUBLIC_API_URL in Vercel environment variables
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+  "http://localhost:8000";
+
 // Dynamic import of MapComponent to avoid SSR (Leaflet requires browser APIs)
 const MapComponent = dynamic(() => import("./components/MapComponent"), {
   ssr: false,
@@ -81,7 +86,7 @@ export default function Home() {
           is_villa: values.is_villa,
         };
 
-        const response = await fetch("/api/predict", {
+        const response = await fetch(`${API_URL}/predict`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -89,18 +94,20 @@ export default function Home() {
 
         const data = await response.json();
 
-        if (!response.ok || data.error) {
-          setError(data.error || `Server error: ${response.status}`);
+        if (!response.ok || data.detail) {
+          setError(data.detail || `Server error: ${response.status}`);
           return;
         }
 
         setResult({ ...data, area: values.area });
         if (data.usd_rate) setUsdRate(data.usd_rate);
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isCors = msg.includes("Failed to fetch") || msg.includes("NetworkError");
         setError(
-          err instanceof Error
-            ? err.message
-            : "Network error — please check your connection."
+          isCors
+            ? `Cannot reach API at ${API_URL}. Check NEXT_PUBLIC_API_URL or ensure backend is running.`
+            : msg
         );
       } finally {
         setIsLoading(false);

@@ -17,20 +17,21 @@ out/
 .env.test.local
 .env.production.local
 
-# ML Model files (place these manually in /api/models/ before deploying)
+# ML Model files — place manually in backend/models/ before deploying
 api/models/*.json
 !api/models/README.md
+backend/models/*.json
+!backend/models/README.md
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS
-.DS_Store
-Thumbs.db
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
 __pycache__/
+.DS_Store

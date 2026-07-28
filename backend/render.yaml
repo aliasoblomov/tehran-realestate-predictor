@@ -1,0 +1,15 @@
+# Render.com deployment configuration
+# Place this file in the backend/ directory or repo root
+
+services:
+  - type: web
+    name: tehran-realestate-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free                   # upgrade to starter for always-on
+    envVars:
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false              # set manually in Render dashboard
+    healthCheckPath: /health
+    autoDeploy: true

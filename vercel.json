@@ -1,7 +1,1 @@
-{
-  "functions": {
-    "api/predict.py": {
-      "maxDuration": 30
-    }
-  }
-}
+{}
