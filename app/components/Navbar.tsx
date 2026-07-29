@@ -123,7 +123,7 @@ export default function Navbar({ usdRate }: NavbarProps) {
                   color: "#f97316",
                 }}
               >
-                {(usdRate / 10).toLocaleString("en-US")} Tomans
+                {usdRate.toLocaleString("en-US")} Tomans
               </span>
             ) : (
               <span
