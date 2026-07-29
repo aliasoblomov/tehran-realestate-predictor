@@ -144,50 +144,59 @@ class PredictResponse(BaseModel):
 # SECTION A: Live scraping
 # ─────────────────────────────────────────────────────────
 def scrape_live_rates() -> dict:
-    """Scrape live USD free-market rate and TEDPIX from tgju.org."""
+    """Fetch live USD free-market rate from BrsApi and TEDPIX from tgju.org."""
     result = {"usd": None, "tedpix": None}
+    import requests
+    from bs4 import BeautifulSoup
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "fa-IR,fa;q=0.9,en;q=0.8",
+    }
+
+    # 1. Fetch USD from BrsApi
     try:
-        import requests
-        from bs4 import BeautifulSoup
-
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "fa-IR,fa;q=0.9,en;q=0.8",
-        }
-
-        for key, url in [
-            ("usd",    "https://www.tgju.org/profile/price_dollar_rl"),
-            ("tedpix", "https://www.tgju.org/profile/tedpix"),
-        ]:
-            try:
-                resp = requests.get(url, headers=headers, timeout=8)
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.text, "html.parser")
-                    tag = soup.find("span", {"data-col": "info_price_rial"})
-                    if tag and tag.get("data-value"):
-                        result[key] = float(tag["data-value"].replace(",", "").strip())
-                    else:
-                        for t in soup.select(
-                            ".market-profile-primary-price strong, .info-price"
-                        ):
-                            text = t.get_text(strip=True).replace(",", "")
-                            try:
-                                val = float("".join(c for c in text if c.isdigit() or c == "."))
-                                if 10_000 < val < 150_000:
-                                    val *= 10  # convert Toman to Rial
-                                if val > 100_000:
-                                    result[key] = val
-                                    break
-                            except ValueError:
-                                continue
-            except Exception as e:
-                print(f"[scrape] {key} failed: {e}")
+        usd_url = "https://Api.BrsApi.ir/Market/Gold_Currency.php?key=B8rWPPXwLqJFRKbKv347ynyP8ahduHWy"
+        resp = requests.get(usd_url, headers=headers, timeout=8)
+        if resp.status_code == 200:
+            data = resp.json()
+            for curr in data.get("currency", []):
+                if curr.get("name") == "دلار" or curr.get("name") == "Dollar":
+                    # BrsApi usually returns values in Tomans or Rials. 
+                    # If it's e.g. 60,000 (Tomans), we need Rials (600,000).
+                    try:
+                        val = float(str(curr.get("price", "0")).replace(",", ""))
+                        if 10_000 < val < 150_000:
+                            val *= 10
+                        result["usd"] = val
+                        break
+                    except ValueError:
+                        pass
     except Exception as e:
-        print(f"[scrape] outer error: {e}")
+        print(f"[scrape] USD failed: {e}")
+
+    # 2. Fetch TEDPIX from TGJU
+    try:
+        tedpix_url = "https://www.tgju.org/profile/tedpix"
+        resp = requests.get(tedpix_url, headers=headers, timeout=8)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            tag = soup.find("span", {"data-col": "info_price_rial"})
+            if tag and tag.get("data-value"):
+                result["tedpix"] = float(tag["data-value"].replace(",", "").strip())
+            else:
+                for t in soup.select(".market-profile-primary-price strong, .info-price"):
+                    text = t.get_text(strip=True).replace(",", "")
+                    try:
+                        val = float("".join(c for c in text if c.isdigit() or c == "."))
+                        if val > 1_000_000:  # TEDPIX is around 2M
+                            result["tedpix"] = val
+                            break
+                    except ValueError:
+                        continue
+    except Exception as e:
+        print(f"[scrape] TEDPIX failed: {e}")
+
     return result
 
 

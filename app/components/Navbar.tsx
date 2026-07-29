@@ -38,11 +38,11 @@ export default function Navbar({ usdRate }: NavbarProps) {
               width: "34px",
               height: "34px",
               borderRadius: "10px",
-              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              background: "linear-gradient(135deg, #f97316, #ea580c)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 16px rgba(245, 158, 11, 0.4)",
+              boxShadow: "0 0 16px rgba(249, 115, 22, 0.4)",
               flexShrink: 0,
             }}
           >
@@ -105,7 +105,7 @@ export default function Navbar({ usdRate }: NavbarProps) {
               padding: "6px 12px",
             }}
           >
-            <TrendingUp size={13} color="#f59e0b" />
+            <TrendingUp size={13} color="#f97316" />
             <span
               style={{
                 fontSize: "0.72rem",
@@ -120,7 +120,7 @@ export default function Navbar({ usdRate }: NavbarProps) {
                 style={{
                   fontSize: "0.75rem",
                   fontWeight: 700,
-                  color: "#f59e0b",
+                  color: "#f97316",
                 }}
               >
                 {(usdRate / 10).toLocaleString("en-US")} Tomans

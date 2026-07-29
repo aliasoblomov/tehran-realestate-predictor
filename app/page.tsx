@@ -33,8 +33,8 @@ const MapComponent = dynamic(() => import("./components/MapComponent"), {
         style={{
           width: "40px",
           height: "40px",
-          border: "3px solid rgba(245,158,11,0.2)",
-          borderTopColor: "#f59e0b",
+          border: "3px solid rgba(249,115,22,0.2)",
+          borderTopColor: "#f97316",
           borderRadius: "50%",
         }}
         className="animate-spin-slow"
@@ -169,7 +169,7 @@ export default function Home() {
           margin: "0 auto",
           width: "100%",
           display: "grid",
-          gridTemplateColumns: "1fr 340px",
+          gridTemplateColumns: "1fr 420px",
           gridTemplateRows: "1fr auto",
           gap: "16px",
         }}
@@ -203,18 +203,6 @@ export default function Home() {
           }}
           id="form-panel"
         >
-          <div
-            style={{
-              fontSize: "0.65rem",
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "#f59e0b",
-              marginBottom: "14px",
-            }}
-          >
-            Property Configuration
-          </div>
           <PredictionForm
             selectedLocation={selectedLocation}
             onSubmit={handleSubmit}

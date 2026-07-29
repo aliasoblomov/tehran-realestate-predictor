@@ -77,21 +77,21 @@ export default function MapComponent({
           <div style="
             width: 32px;
             height: 32px;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
+            background: linear-gradient(135deg, #f97316, #ea580c);
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             border: 3px solid rgba(255,255,255,0.9);
-            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.7), 0 0 0 0 rgba(245, 158, 11, 0.6);
+            box-shadow: 0 4px 20px rgba(249, 115, 22, 0.7), 0 0 0 0 rgba(249, 115, 22, 0.6);
             animation: pulse-ring 2s infinite;
           ">
           </div>
           <div style="
             width: 6px;
             height: 6px;
-            background: #f59e0b;
+            background: #f97316;
             border-radius: 50%;
             margin-top: 2px;
-            box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+            box-shadow: 0 0 8px rgba(249, 115, 22, 0.8);
           "></div>
         </div>
       `,
@@ -112,11 +112,7 @@ export default function MapComponent({
         .addTo(map)
         .bindPopup(
           `<div style="text-align:center; padding: 4px 0;">
-            <div style="font-size:0.7rem; color:#94a3b8; margin-bottom:4px;">Selected Location</div>
-            <div style="font-weight:700; color:#f59e0b; font-size:0.82rem;">
-              ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E
-            </div>
-            <div id="popup-address" style="font-size:0.65rem; color:#64748b; margin-top:6px;">Fetching address...</div>
+            <div id="popup-address" style="font-size:0.85rem; font-weight: 700; color:#f97316; margin-top:6px;">Fetching address...</div>
           </div>`,
           { closeButton: false }
         )
@@ -129,17 +125,29 @@ export default function MapComponent({
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fa`);
         const data = await res.json();
-        const addr = data.display_name || "Unknown Address";
-        setAddress(addr);
+        
+        let addrStr = "Unknown Address";
+        if (data.address) {
+            const parts = [];
+            if (data.address.suburb || data.address.neighbourhood) {
+                parts.push(data.address.suburb || data.address.neighbourhood);
+            }
+            if (data.address.road) {
+                parts.push(data.address.road);
+            }
+            if (parts.length > 0) {
+                addrStr = parts.join("، ");
+            } else if (data.display_name) {
+                // fallback to shorten display_name
+                addrStr = data.display_name.split(",").slice(0, 2).join("، ");
+            }
+        }
+        setAddress(addrStr);
         
         // Update popup if still open
-        const popupContent = `<div style="text-align:center; padding: 4px 0;">
-            <div style="font-size:0.7rem; color:#94a3b8; margin-bottom:4px;">Selected Location</div>
-            <div style="font-weight:700; color:#f59e0b; font-size:0.82rem;">
-              ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E
-            </div>
-            <div style="font-size:0.65rem; color:#64748b; margin-top:6px; max-width: 150px; line-height: 1.3;">
-              ${addr}
+        const popupContent = `<div style="text-align:center; padding: 6px 4px;">
+            <div style="font-weight:700; color:#f97316; font-size:0.85rem;">
+              ${addrStr}
             </div>
           </div>`;
         marker.setPopupContent(popupContent);
@@ -154,8 +162,8 @@ export default function MapComponent({
         className: "",
         html: `<div style="
           background: rgba(13, 20, 37, 0.8);
-          border: 1px solid rgba(245, 158, 11, 0.3);
-          color: #f59e0b;
+          border: 1px solid rgba(249, 115, 22, 0.3);
+          color: #f97316;
           font-size: 0.65rem;
           font-weight: 700;
           letter-spacing: 0.1em;
@@ -213,7 +221,7 @@ export default function MapComponent({
             left: "50%",
             transform: "translateX(-50%)",
             background: "rgba(8, 12, 20, 0.88)",
-            border: "1px solid rgba(245, 158, 11, 0.3)",
+            border: "1px solid rgba(249, 115, 22, 0.3)",
             borderRadius: "100px",
             padding: "8px 20px",
             display: "flex",
@@ -246,7 +254,7 @@ export default function MapComponent({
             top: "12px",
             left: "12px",
             background: "rgba(8, 12, 20, 0.9)",
-            border: "1px solid rgba(245, 158, 11, 0.35)",
+            border: "1px solid rgba(249, 115, 22, 0.35)",
             borderRadius: "8px",
             padding: "8px 12px",
             zIndex: 1000,
@@ -257,15 +265,13 @@ export default function MapComponent({
           <div style={{ fontSize: "0.62rem", color: "#475569", marginBottom: "2px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
             Pinned Location
           </div>
-          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#f59e0b" }}>
-            {selectedLocation.lat.toFixed(5)}° N
-          </div>
-          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#2dd4bf" }}>
-            {selectedLocation.lon.toFixed(5)}° E
-          </div>
-          {address && (
-            <div style={{ fontSize: "0.65rem", color: "#94a3b8", marginTop: "4px", maxWidth: "160px", lineHeight: 1.2 }}>
+          {address ? (
+            <div style={{ fontSize: "0.85rem", color: "#f97316", fontWeight: 700, marginTop: "2px", maxWidth: "160px", lineHeight: 1.2 }}>
               {address}
+            </div>
+          ) : (
+            <div style={{ fontSize: "0.75rem", color: "#f97316", fontWeight: 600 }}>
+              Fetching...
             </div>
           )}
         </div>

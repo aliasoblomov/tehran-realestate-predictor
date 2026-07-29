@@ -119,7 +119,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
         className="glass-card"
         style={{ padding: "28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "20px", minHeight: "250px" }}
       >
-        <div className="animate-spin-slow" style={{ width: "40px", height: "40px", border: "3px solid rgba(245,158,11,0.2)", borderTopColor: "#f59e0b", borderRadius: "50%" }} />
+        <div className="animate-spin-slow" style={{ width: "40px", height: "40px", border: "3px solid rgba(249,115,22,0.2)", borderTopColor: "#f97316", borderRadius: "50%" }} />
         <div style={{ color: "#94a3b8", fontSize: "0.9rem", fontWeight: 600 }} className="animate-fadeUp" key={loadingMsgIdx}>
           {loadingMessages[loadingMsgIdx]}
         </div>
@@ -185,14 +185,14 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
             width: "52px",
             height: "52px",
             borderRadius: "16px",
-            background: "rgba(245, 158, 11, 0.08)",
-            border: "1px solid rgba(245, 158, 11, 0.15)",
+            background: "rgba(249, 115, 22, 0.08)",
+            border: "1px solid rgba(249, 115, 22, 0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <BarChart3 size={24} color="#d97706" />
+          <BarChart3 size={24} color="#ea580c" />
         </div>
         <div>
           <div style={{ fontWeight: 700, color: "#94a3b8", fontSize: "0.9rem" }}>
@@ -219,13 +219,13 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
                   width: "20px",
                   height: "20px",
                   borderRadius: "50%",
-                  background: "rgba(245, 158, 11, 0.2)",
+                  background: "rgba(249, 115, 22, 0.2)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "0.6rem",
                   fontWeight: 800,
-                  color: "#f59e0b",
+                  color: "#f97316",
                   flexShrink: 0,
                 }}
               >
@@ -258,11 +258,11 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
               width: "36px",
               height: "36px",
               borderRadius: "10px",
-              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              background: "linear-gradient(135deg, #f97316, #ea580c)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 16px rgba(245, 158, 11, 0.4)",
+              boxShadow: "0 0 16px rgba(249, 115, 22, 0.4)",
               animation: "pulse-ring 2s infinite",
             }}
           >
@@ -321,7 +321,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
           label="Final / m²"
           value={`${formatMillionTomans(result.final_price_per_sqm)} M Tomans`}
           subValue={`≈ $${(result.final_price_per_sqm / result.usd_rate).toFixed(0)}/m²`}
-          color="#f59e0b"
+          color="#f97316"
           icon={<DollarSign size={12} />}
           delay={200}
         />
@@ -338,8 +338,8 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
       {/* Final total price hero */}
       <div
         style={{
-          background: "linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(13,20,37,0.5) 100%)",
-          border: "1px solid rgba(245, 158, 11, 0.25)",
+          background: "linear-gradient(135deg, rgba(249,115,22,0.1) 0%, rgba(13,20,37,0.5) 100%)",
+          border: "1px solid rgba(249, 115, 22, 0.25)",
           borderRadius: "14px",
           padding: "20px 24px",
           display: "flex",
@@ -376,7 +376,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
         >
           {[
             { label: "Base/m²", val: result.base_price_per_sqm, max: result.final_price_per_sqm, color: "#64748b" },
-            { label: "Final/m²", val: result.final_price_per_sqm, max: result.final_price_per_sqm, color: "#f59e0b" },
+            { label: "Final/m²", val: result.final_price_per_sqm, max: result.final_price_per_sqm, color: "#f97316" },
           ].map(({ label, val, max, color }) => (
             <div key={label}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
