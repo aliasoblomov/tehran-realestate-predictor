@@ -97,31 +97,57 @@ function Metric({ label, value, subValue, color, icon, delay = 0 }: MetricProps)
 
 export default function ResultCard({ result, error, isLoading }: ResultCardProps) {
   // Loading skeleton state
-  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  const loadingMessages = [
-    "Connecting to BigQuery...",
-    "Calculating distances to Metro...",
-    "Running XGBoost models...",
-    "Finalizing valuation..."
-  ];
+  const [loadingSteps, setLoadingSteps] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!isLoading) return;
-    const int = setInterval(() => {
-      setLoadingMsgIdx((prev) => (prev + 1) % loadingMessages.length);
-    }, 1500);
-    return () => clearInterval(int);
+    if (!isLoading) {
+      setLoadingSteps([]);
+      return;
+    }
+    
+    const steps = [
+      "Initializing ML pipeline...",
+      "Fetching live USD rates from BrsApi...",
+      "Querying BigQuery for spatial coordinates...",
+      "Engineering macro-economic lag features...",
+      "Executing XGBoost ensembles...",
+      "Finalizing valuation..."
+    ];
+    
+    let currentStep = 0;
+    setLoadingSteps([steps[0]]);
+    
+    const interval = setInterval(() => {
+      currentStep++;
+      if (currentStep < steps.length) {
+        setLoadingSteps(prev => [...prev, steps[currentStep]]);
+      }
+    }, 1200);
+
+    return () => clearInterval(interval);
   }, [isLoading]);
 
   if (isLoading) {
     return (
-      <div
-        className="glass-card"
-        style={{ padding: "28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "20px", minHeight: "250px" }}
-      >
-        <div className="animate-spin-slow" style={{ width: "40px", height: "40px", border: "3px solid rgba(249,115,22,0.2)", borderTopColor: "#f97316", borderRadius: "50%" }} />
-        <div style={{ color: "#94a3b8", fontSize: "0.9rem", fontWeight: 600 }} className="animate-fadeUp" key={loadingMsgIdx}>
-          {loadingMessages[loadingMsgIdx]}
+      <div className="glass-card" style={{ padding: "32px", minHeight: "400px", display: "flex", flexDirection: "column", justifyContent: "center", border: "1px solid rgba(249,115,22,0.3)" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px" }}>
+          <div className="animate-spin" style={{ color: "#f97316" }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          </div>
+        </div>
+        <div style={{ backgroundColor: "rgba(15, 23, 42, 0.6)", borderRadius: "8px", padding: "16px", fontFamily: "monospace", fontSize: "0.85rem", color: "#cbd5e1", minHeight: "160px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          {loadingSteps.map((step, idx) => (
+            <div key={idx} className="animate-fadeUp" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ color: "#10b981" }}>{`>`}</span> {step}
+            </div>
+          ))}
+          {loadingSteps.length < 6 && (
+            <div className="animate-pulse" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ color: "#f97316" }}>_</span>
+            </div>
+          )}
         </div>
       </div>
     );
