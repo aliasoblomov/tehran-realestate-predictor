@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import PredictionForm, { FormValues } from "./components/PredictionForm";
 import ResultCard, { PredictionResult } from "./components/ResultCard";
@@ -53,6 +53,23 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [usdRate, setUsdRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Fetch live USD rate directly on page load for the Navbar
+    const fetchLiveRate = async () => {
+      try {
+        const res = await fetch("https://Api.BrsApi.ir/Market/Gold_Currency.php?key=B8rWPPXwLqJFRKbKv347ynyP8ahduHWy");
+        const data = await res.json();
+        const usdObj = data.currency?.find((c: any) => c.symbol === "USD");
+        if (usdObj && usdObj.price) {
+          setUsdRate(Number(usdObj.price));
+        }
+      } catch (err) {
+        console.error("Failed to fetch USD on mount:", err);
+      }
+    };
+    fetchLiveRate();
+  }, []);
 
   const handleLocationSelect = useCallback((lat: number, lon: number) => {
     setSelectedLocation({ lat, lon });
