@@ -2370,16 +2370,40 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
     }
 
 MICRO_COLUMNS = [
-    "building_area", "building_age", "total_floors_count", "unit_per_floor",
-    "rooms_count", "has_elevator", "has_parking", "has_warehouse",
-    "is_rebuilt", "is_villa", "dist_to_metro", "dist_to_cbd",
-    "dist_to_highway", "commercial_density", "seismic_risk_level",
-    "air_quality_aqi", "traffic_zone_status", "urban_decay_class",
-    "floor_elevator_penalty", "value_retention_bonus",
-    "bonus_tod_livability", "penalty_traffic_nuisance",
-    "suburban_metro_dependency", "redevelopment_premium",
-    "highway_sweetspot", "region_id", "floor_num",
-    "total_floors_num", "unit_per_floor_num", "neighborhood_encoded",
+    "has_elevator",
+    "has_parking",
+    "has_warehouse",
+    "is_rebuilt",
+    "is_centroid_imputed",
+    "is_price_converted",
+    "is_villa",
+    "land_size",
+    "building_size",
+    "rooms_count",
+    "building_age",
+    "location_latitude",
+    "location_longitude",
+    "location_radius",
+    "commercial_density",
+    "dist_to_metro",
+    "dist_to_cbd",
+    "dist_to_highway",
+    "seismic_risk_level",
+    "air_quality_aqi",
+    "traffic_zone_status",
+    "urban_decay_class",
+    "floor_elevator_penalty",
+    "value_retention_bonus",
+    "bonus_tod_livability",
+    "penalty_traffic_nuisance",
+    "suburban_metro_dependency",
+    "redevelopment_premium",
+    "highway_sweetspot",
+    "region_id",
+    "floor_num",
+    "total_floors_num",
+    "unit_per_floor_num",
+    "neighborhood_encoded",
 ]
 
 MACRO_COLUMNS = (
@@ -2401,17 +2425,40 @@ def engineer_micro_features(req: PredictRequest, spatial: dict,
     highway_sweetspot        = 1 if 200 <= spatial["dist_to_highway"] <= 900 else 0
 
     return [
-        req.area, req.building_age, req.total_floors, req.unit_per_floor,
-        req.rooms_count, int(req.has_elevator), int(req.has_parking),
-        int(req.has_warehouse), int(req.is_rebuilt), int(req.is_villa),
-        spatial["dist_to_metro"], spatial["dist_to_cbd"],
-        spatial["dist_to_highway"], spatial["commercial_density"],
-        spatial["seismic_risk_level"], spatial["air_quality_aqi"],
-        spatial["traffic_zone_status"], spatial["urban_decay_class"],
-        floor_elevator_penalty, value_retention_bonus, bonus_tod_livability,
-        penalty_traffic_nuisance, suburban_metro_dependency, redevelopment_premium,
-        highway_sweetspot, region_id, req.floor_num, req.total_floors,
-        req.unit_per_floor, neighborhood_encoded,
+        int(req.has_elevator),
+        int(req.has_parking),
+        int(req.has_warehouse),
+        int(req.is_rebuilt),
+        0, # is_centroid_imputed
+        0, # is_price_converted
+        int(req.is_villa),
+        float(req.area), # land_size
+        float(req.area), # building_size
+        float(req.rooms_count),
+        float(req.building_age),
+        float(req.lat), # location_latitude
+        float(req.lon), # location_longitude
+        0.0, # location_radius
+        float(spatial["commercial_density"]),
+        float(spatial["dist_to_metro"]),
+        float(spatial["dist_to_cbd"]),
+        float(spatial["dist_to_highway"]),
+        float(spatial["seismic_risk_level"]),
+        float(spatial["air_quality_aqi"]),
+        float(spatial["traffic_zone_status"]),
+        float(spatial["urban_decay_class"]),
+        float(floor_elevator_penalty),
+        float(value_retention_bonus),
+        float(bonus_tod_livability),
+        float(penalty_traffic_nuisance),
+        float(suburban_metro_dependency),
+        float(redevelopment_premium),
+        float(highway_sweetspot),
+        float(region_id),
+        float(req.floor_num),
+        float(req.total_floors), # total_floors_num
+        float(req.unit_per_floor), # unit_per_floor_num
+        float(neighborhood_encoded),
     ]
 
 def build_macro_features(macro_row, live_usd, live_tedpix, region_id) -> list:
