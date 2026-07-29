@@ -210,9 +210,7 @@ def _tbl(name: str) -> str:
 
 def fetch_latest_macro_row(client) -> dict:
     query = f"""
-        SELECT Year_Jalali, USD_Free_Market, TEDPIX_Index,
-               USD_Free_Market_Lag_1, USD_Free_Market_Lag_3,
-               USD_Free_Market_Lag_6, TEDPIX_Index_Lag_3
+        SELECT *
         FROM {_tbl('macro_monthly_database')}
         ORDER BY Year_Jalali DESC, Month_Jalali DESC
         LIMIT 1
@@ -221,11 +219,7 @@ def fetch_latest_macro_row(client) -> dict:
     if not rows:
         raise ValueError("macro_monthly_database returned no rows.")
     r = rows[0]
-    return {k: r[k] for k in [
-        "Year_Jalali", "USD_Free_Market", "TEDPIX_Index",
-        "USD_Free_Market_Lag_1", "USD_Free_Market_Lag_3",
-        "USD_Free_Market_Lag_6", "TEDPIX_Index_Lag_3",
-    ]}
+    return dict(r.items())
 
 
 def fetch_nearest_neighborhood(client, lat: float, lon: float) -> dict:
@@ -455,22 +449,12 @@ def build_macro_features(macro_row, live_usd, live_tedpix, region_id) -> list:
     ohe = [1 if i == region_id else 0 for i in range(1, 23)]
     return [
         int(macro_row["Year_Jalali"]),
-        int(macro_row["Month_Jalali"]),
-        float(macro_row["Inflation_Housing_YoY"]),
         live_usd,
         live_tedpix,
         float(macro_row["USD_Free_Market_Lag_1"]),
         float(macro_row["USD_Free_Market_Lag_3"]),
         float(macro_row["USD_Free_Market_Lag_6"]),
-        float(macro_row["TEDPIX_Index_Lag_1"]),
         float(macro_row["TEDPIX_Index_Lag_3"]),
-        float(macro_row["TEDPIX_Index_Lag_6"]),
-        float(macro_row["Inflation_General_YoY_Lag_3"]),
-        float(macro_row["Inflation_General_YoY_Lag_6"]),
-        float(macro_row["Construction_Cost_YoY_Lag_3"]),
-        float(macro_row["Construction_Cost_YoY_Lag_6"]),
-        float(macro_row["Liquidity_M2_Growth_Lag_3"]),
-        float(macro_row["Liquidity_M2_Growth_Lag_6"]),
     ] + ohe
 
 
