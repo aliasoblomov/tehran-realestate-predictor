@@ -2256,8 +2256,9 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
         ),
 
         hwy_geom AS (
-            SELECT ST_GEOGFROMTEXT({strip_z}) AS geom
+            SELECT SAFE.ST_GEOGFROMTEXT({strip_z}) AS geom
             FROM `{BQ_DATASET}.ref_highways`
+            WHERE SAFE.ST_GEOGFROMTEXT({strip_z}) IS NOT NULL
         ),
         hwy_calc AS (
             SELECT MIN(ST_DISTANCE(h.geom, (SELECT pt FROM user_point))) AS dist
@@ -2276,7 +2277,7 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
 
         decay_geom AS (
             SELECT
-                ST_GEOGFROMTEXT({strip_z}) AS geom,
+                SAFE.ST_GEOGFROMTEXT({strip_z}) AS geom,
                 CASE
                     WHEN decay_zone_name = 'فرسوده' THEN 4
                     WHEN decay_zone_name LIKE '%-%' THEN 3
@@ -2285,6 +2286,7 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
                     ELSE 0
                 END AS decay_class
             FROM `{BQ_DATASET}.ref_urban_decay`
+            WHERE SAFE.ST_GEOGFROMTEXT({strip_z}) IS NOT NULL
         ),
         decay_calc AS (
             SELECT MAX(d.decay_class) AS decay_class
@@ -2308,9 +2310,10 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
 
         traffic_geom AS (
             SELECT
-                ST_GEOGFROMTEXT({strip_z}) AS geom,
+                SAFE.ST_GEOGFROMTEXT({strip_z}) AS geom,
                 SAFE_CAST(traffic_zone_status AS INT64) AS traffic_score
             FROM `{BQ_DATASET}.ref_traffic_zones`
+            WHERE SAFE.ST_GEOGFROMTEXT({strip_z}) IS NOT NULL
         ),
         traffic_calc AS (
             SELECT MAX(t.traffic_score) AS traffic_score
@@ -2338,7 +2341,11 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
             COALESCE((SELECT traffic_score FROM traffic_calc),     0) AS traffic_zone_status,
             COALESCE((SELECT seismic_risk FROM seismic_calc),      1) AS seismic_risk_level
     """
-    rows = list(client.query(query).result())
+    try:
+        rows = list(client.query(query).result())
+    except Exception as e:
+        print(f"[fetch_spatial_features_error] {e}")
+        rows = []
     if not rows:
         return {
             "dist_to_metro": FALLBACK_DIST_MAX,
