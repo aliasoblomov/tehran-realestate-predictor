@@ -45,7 +45,7 @@ export default function RootLayout({
           style={{
             width: "600px",
             height: "600px",
-            background: "rgba(245, 158, 11, 0.06)",
+            background: "rgba(249, 115, 22, 0.06)",
             top: "-200px",
             right: "-150px",
           }}

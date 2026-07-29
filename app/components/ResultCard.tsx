@@ -11,6 +11,13 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+export interface CandidateNeighborhood {
+  slug: string;
+  region_id: number;
+  distance_km: number;
+  name: string;
+}
+
 export interface PredictionResult {
   base_price_per_sqm: number;
   quality_ratio: number;
@@ -20,6 +27,7 @@ export interface PredictionResult {
   neighborhood: string;
   region_id: number;
   area: number;
+  candidate_neighborhoods?: CandidateNeighborhood[];
   error?: string;
 }
 
@@ -27,6 +35,7 @@ interface ResultCardProps {
   result: PredictionResult | null;
   error: string | null;
   isLoading: boolean;
+  onNeighborhoodChange?: (slug: string) => void;
 }
 
 function formatMillionTomans(amount: number): string {
@@ -100,7 +109,7 @@ function Metric({ label, value, subValue, color, icon, delay = 0 }: MetricProps)
   );
 }
 
-export default function ResultCard({ result, error, isLoading }: ResultCardProps) {
+export default function ResultCard({ result, error, isLoading, onNeighborhoodChange }: ResultCardProps) {
   // Loading skeleton state
   const [loadingSteps, setLoadingSteps] = useState<string[]>([]);
 
@@ -303,14 +312,39 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
             <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#f1f5f9" }}>
               Prediction Result
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
-              <MapPin size={11} color="#2dd4bf" />
-              <span style={{ fontSize: "0.68rem", color: "#2dd4bf", fontWeight: 600 }}>
-                {result.neighborhood
-                  ? result.neighborhood.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-                  : "Unknown"}{" "}
-                · Region {result.region_id}
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+              <MapPin size={12} color="#2dd4bf" />
+              {result.candidate_neighborhoods && result.candidate_neighborhoods.length > 0 ? (
+                <select
+                  value={result.neighborhood}
+                  onChange={(e) => onNeighborhoodChange?.(e.target.value)}
+                  style={{
+                    background: "rgba(15, 23, 42, 0.8)",
+                    border: "1px solid rgba(45, 212, 191, 0.4)",
+                    borderRadius: "6px",
+                    color: "#2dd4bf",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    padding: "3px 8px",
+                    cursor: "pointer",
+                    outline: "none",
+                    boxShadow: "0 0 10px rgba(45, 212, 191, 0.15)",
+                  }}
+                >
+                  {result.candidate_neighborhoods.map((c) => (
+                    <option key={c.slug} value={c.slug} style={{ background: "#0f172a", color: "#f8fafc" }}>
+                      {c.name} ({c.distance_km} km) · Region {c.region_id}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: "0.68rem", color: "#2dd4bf", fontWeight: 600 }}>
+                  {result.neighborhood
+                    ? result.neighborhood.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                    : "Unknown"}{" "}
+                  · Region {result.region_id}
+                </span>
+              )}
             </div>
           </div>
         </div>

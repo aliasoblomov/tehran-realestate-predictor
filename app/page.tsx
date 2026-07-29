@@ -78,16 +78,18 @@ export default function Home() {
     setError(null);
   }, []);
 
+  const [lastFormValues, setLastFormValues] = useState<FormValues | null>(null);
+
   const handleSubmit = useCallback(
-    async (values: FormValues) => {
+    async (values: FormValues, overrideSlug?: string) => {
       if (!selectedLocation) return;
 
+      setLastFormValues(values);
       setIsLoading(true);
       setError(null);
-      setResult(null);
 
       try {
-        const payload = {
+        const payload: Record<string, unknown> = {
           lat: selectedLocation.lat,
           lon: selectedLocation.lon,
           area: values.area,
@@ -102,6 +104,10 @@ export default function Home() {
           is_rebuilt: values.is_rebuilt,
           is_villa: values.is_villa,
         };
+
+        if (overrideSlug) {
+          payload.selected_neighborhood_slug = overrideSlug;
+        }
 
         const response = await fetch(`${API_URL}/predict`, {
           method: "POST",
@@ -131,6 +137,15 @@ export default function Home() {
       }
     },
     [selectedLocation]
+  );
+
+  const handleNeighborhoodChange = useCallback(
+    (slug: string) => {
+      if (lastFormValues) {
+        handleSubmit(lastFormValues, slug);
+      }
+    },
+    [lastFormValues, handleSubmit]
   );
 
   return (
@@ -234,7 +249,12 @@ export default function Home() {
           }}
           id="results-panel"
         >
-          <ResultCard result={result} error={error} isLoading={isLoading} />
+          <ResultCard
+            result={result}
+            error={error}
+            isLoading={isLoading}
+            onNeighborhoodChange={handleNeighborhoodChange}
+          />
         </div>
       </div>
 
