@@ -2066,15 +2066,15 @@ def fetch_region_id_from_borders(client, lat: float, lon: float) -> Optional[int
         "REGEXP_REPLACE("
         "REPLACE(REPLACE(geometry_wkt, ' Z', ''), ' ZM', ''), "
         r"r'([0-9eE.\-]+\s+[0-9eE.\-]+)\s+[0-9eE.\-]+(?:\s+[0-9eE.\-]+)?', "
-        r"r'')"
+        r"r'\1')"
     )
     query = f"""
         SELECT district_name
         FROM `{BQ_DATASET}.ref_tehran_borders`
-        WHERE ST_WITHIN(
+        WHERE SAFE.ST_WITHIN(
             ST_GEOGPOINT({lon}, {lat}),
-            ST_GEOGFROMTEXT({strip_z})
-        )
+            SAFE.ST_GEOGFROMTEXT({strip_z})
+        ) IS TRUE
         LIMIT 1
     """
     try:

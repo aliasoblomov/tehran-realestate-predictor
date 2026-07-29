@@ -16,10 +16,11 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
-  MapPin,
   Loader2,
-  Edit3
+  Edit3,
+  MapPin,
 } from "lucide-react";
+import { getTopCandidates, CandidateNeighborhood } from "../utils/neighborhoods";
 
 export interface FormValues {
   area: number;
@@ -37,7 +38,7 @@ export interface FormValues {
 
 interface PredictionFormProps {
   selectedLocation: { lat: number; lon: number } | null;
-  onSubmit: (values: FormValues) => void;
+  onSubmit: (values: FormValues, selectedSlug?: string) => void;
   isLoading: boolean;
 }
 
@@ -188,6 +189,23 @@ export default function PredictionForm({
     is_villa: false,
   });
 
+  const [selectedSlug, setSelectedSlug] = useState<string>("");
+
+  const candidates: CandidateNeighborhood[] = selectedLocation
+    ? getTopCandidates(selectedLocation.lat, selectedLocation.lon)
+    : [];
+
+  useEffect(() => {
+    if (selectedLocation) {
+      const top = getTopCandidates(selectedLocation.lat, selectedLocation.lon);
+      if (top.length > 0) {
+        setSelectedSlug(top[0].slug);
+      }
+    } else {
+      setSelectedSlug("");
+    }
+  }, [selectedLocation]);
+
   const set = (key: keyof FormValues) => (v: boolean | number) =>
     setValues((prev) => ({ ...prev, [key]: v }));
 
@@ -309,6 +327,46 @@ export default function PredictionForm({
               ].filter(Boolean).join(", ") || "None"} onEdit={() => setStep(3)} />
             </div>
 
+            {selectedLocation && candidates.length > 0 && (
+              <div
+                style={{
+                  background: "rgba(249, 115, 22, 0.08)",
+                  border: "1px solid rgba(249, 115, 22, 0.3)",
+                  borderRadius: "14px",
+                  padding: "14px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#f97316", fontWeight: 700, fontSize: "0.82rem" }}>
+                  <MapPin size={14} /> Candidate Neighborhood (3 Closest Match)
+                </div>
+                <select
+                  value={selectedSlug}
+                  onChange={(e) => setSelectedSlug(e.target.value)}
+                  style={{
+                    background: "#0f172a",
+                    border: "1px solid rgba(249, 115, 22, 0.5)",
+                    borderRadius: "8px",
+                    color: "#f8fafc",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    padding: "10px 12px",
+                    width: "100%",
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  {candidates.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.name} ({c.distance_km} km) · Region {c.region_id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {!selectedLocation && (
               <div style={{ padding: "12px", borderRadius: "8px", background: "rgba(249,115,22,0.1)", color: "#f97316", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
                 <MapPin size={16} /> Please pin a location on the map.
@@ -365,7 +423,7 @@ export default function PredictionForm({
         ) : (
           <button
             disabled={!canSubmit}
-            onClick={() => onSubmit(values)}
+            onClick={() => onSubmit(values, selectedSlug)}
             style={{
               flex: 1,
               padding: "14px",
