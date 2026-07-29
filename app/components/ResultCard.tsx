@@ -330,7 +330,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
           value={`${result.usd_rate.toLocaleString("en-US")} Tomans`}
           subValue="Live free market rate"
           color="#a855f7"
-          icon={<Zap size={12} />}
+          icon={<TrendingUp size={12} />}
           delay={300}
         />
       </div>
