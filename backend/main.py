@@ -226,11 +226,13 @@ def fetch_nearest_neighborhood(client, lat: float, lon: float) -> dict:
     query = f"""
         SELECT neighborhood_slug, neighborhood_name,
                ST_DISTANCE(
-                   ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                   ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                    ST_GEOGPOINT({lon}, {lat})
                ) AS dist_m
         FROM {_tbl('ref_neighborhoods')}
-        WHERE neighborhood_slug IS NOT NULL AND latitude IS NOT NULL AND longitude IS NOT NULL
+        WHERE neighborhood_slug IS NOT NULL
+          AND SAFE_CAST(latitude AS FLOAT64) IS NOT NULL
+          AND SAFE_CAST(longitude AS FLOAT64) IS NOT NULL
         ORDER BY dist_m ASC
         LIMIT 1
     """
@@ -243,6 +245,43 @@ def fetch_nearest_neighborhood(client, lat: float, lon: float) -> dict:
     }
 
 
+TEHRAN_REGION_CENTROIDS = [
+    (1,  35.805, 51.435, "Tajrish / Shemiran"),
+    (2,  35.775, 51.365, "Saadat Abad / Shahrak Gharb"),
+    (3,  35.760, 51.420, "Vanak / Jordan / Pasdaran"),
+    (4,  35.755, 51.510, "Tehranpars / Heravi"),
+    (5,  35.750, 51.305, "Punak / Jannat Abad"),
+    (6,  35.720, 51.400, "Yousef Abad / Amir Abad"),
+    (7,  35.730, 51.445, "Sohrevardi / Abbas Abad"),
+    (8,  35.730, 51.505, "Narmak / Haft Hoz"),
+    (9,  35.690, 51.335, "Mehrabad / Azadi"),
+    (10, 35.690, 51.370, "Salsabil / Karoon"),
+    (11, 35.680, 51.400, "Moniriyeh / Jomhouri"),
+    (12, 35.670, 51.430, "Bazaar / Ferdowsi"),
+    (13, 35.700, 51.485, "Pirouzi / Tehran No"),
+    (14, 35.680, 51.470, "Ahang / Doolab"),
+    (15, 35.635, 51.485, "Afsariyeh / Kianshahr"),
+    (16, 35.635, 51.410, "Nazi Abad / Khazaneh"),
+    (17, 35.660, 51.360, "Fallah / Aboozar"),
+    (18, 35.645, 51.295, "Yaftabad / Shadabad"),
+    (19, 35.620, 51.375, "Abdol Abad / Khani Abad"),
+    (20, 35.590, 51.430, "Shahr-e Ray / Dolat Abad"),
+    (21, 35.700, 51.240, "Tehransar / Vardavard"),
+    (22, 35.740, 51.215, "Chitgar / Olympic"),
+]
+
+def find_region_by_coordinates(lat: float, lon: float) -> tuple:
+    best_region = 10
+    best_name = "Region 10"
+    min_dist = float("inf")
+    for rid, clat, clon, name in TEHRAN_REGION_CENTROIDS:
+        dist = (lat - clat) ** 2 + (lon - clon) ** 2
+        if dist < min_dist:
+            min_dist = dist
+            best_region = rid
+            best_name = name
+    return best_region, best_name
+
 def fetch_region_id(client, neighborhood_slug: str) -> int:
     safe = neighborhood_slug.replace("'", "''")
     query = f"""
@@ -252,7 +291,7 @@ def fetch_region_id(client, neighborhood_slug: str) -> int:
         LIMIT 1
     """
     rows = list(client.query(query).result())
-    return int(rows[0]["region_id"]) if rows else 10
+    return int(rows[0]["region_id"]) if rows else None
 
 
 def fetch_spatial_features(client, lat: float, lon: float) -> dict:
@@ -272,12 +311,12 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
         -- ref_metro_stations: latitude/longitude are FLOAT — use ST_DWITHIN(10km) then MIN
         metro_calc AS (
             SELECT MIN(ST_DISTANCE(
-                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point)
             )) AS dist
             FROM `{BQ_DATASET}.ref_metro_stations`
             WHERE ST_DWITHIN(
-                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point), 10000
             )
         ),
@@ -298,7 +337,7 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
             SELECT COUNT(*) AS cnt
             FROM `{BQ_DATASET}.ref_commercial_points`
             WHERE ST_DWITHIN(
-                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point), 500
             )
         ),
@@ -328,11 +367,11 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
             SELECT long_term_aqi AS aqi
             FROM `{BQ_DATASET}.ref_air_quality`
             WHERE ST_DWITHIN(
-                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point), 20000
             )
             ORDER BY ST_DISTANCE(
-                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point)
             ) ASC
             LIMIT 1
@@ -342,7 +381,7 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
         traffic_geom AS (
             SELECT
                 ST_GEOGFROMTEXT({strip_z}) AS geom,
-                CAST(traffic_zone_status AS INT64) AS traffic_score
+                SAFE_CAST(traffic_zone_status AS INT64) AS traffic_score
             FROM `{BQ_DATASET}.ref_traffic_zones`
         ),
         traffic_calc AS (
@@ -353,10 +392,10 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
 
         -- ref_seismic_risk: latitude/longitude are FLOAT — AVG within 500m radius
         seismic_calc AS (
-            SELECT ROUND(AVG(CAST(seismic_risk_level AS INT64))) AS seismic_risk
+            SELECT ROUND(AVG(SAFE_CAST(seismic_risk_level AS INT64))) AS seismic_risk
             FROM `{BQ_DATASET}.ref_seismic_risk`
             WHERE ST_DWITHIN(
-                ST_GEOGPOINT(CAST(longitude AS FLOAT64), CAST(latitude AS FLOAT64)),
+                ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point), 500
             )
         )
@@ -508,10 +547,17 @@ async def predict(req: PredictRequest):
 
         print("[B2] Nearest neighborhood...")
         nb = fetch_nearest_neighborhood(bq, req.lat, req.lon)
-        slug = nb["neighborhood_slug"]
+        slug = nb.get("neighborhood_slug", "UNKNOWN")
 
         print("[B3] Region ID...")
-        region_id = fetch_region_id(bq, slug)
+        region_id = fetch_region_id(bq, slug) if slug != "UNKNOWN" else None
+
+        fallback_region, fallback_name = find_region_by_coordinates(req.lat, req.lon)
+        if region_id is None:
+            region_id = fallback_region
+            if slug == "UNKNOWN" or not slug:
+                slug = f"region-{region_id}"
+                nb["neighborhood_name"] = fallback_name
 
         print("[B4] Spatial features...")
         spatial = fetch_spatial_features(bq, req.lat, req.lon)
