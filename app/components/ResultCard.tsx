@@ -30,12 +30,17 @@ interface ResultCardProps {
 }
 
 function formatMillionTomans(amount: number): string {
-  const tomans = amount / 10_000_000;
-  return tomans.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  if (amount === undefined || amount === null || isNaN(amount)) return "0";
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
 }
 
-function formatFull(amount: number): string {
-  return amount.toLocaleString("en-US");
+function formatFullRials(millionTomans: number): string {
+  if (!millionTomans) return "0";
+  const rials = Math.round(millionTomans * 10_000_000);
+  return rials.toLocaleString("en-US");
 }
 
 interface MetricProps {
@@ -267,7 +272,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
   }
 
   // Result display
-  const usdPrice = result.final_total_price / result.usd_rate;
+  const usdPrice = (result.final_total_price * 1_000_000) / result.usd_rate;
   const qualityPct = ((result.quality_ratio - 1) * 100).toFixed(1);
   const qualitySign = result.quality_ratio >= 1 ? "+" : "";
 
@@ -346,7 +351,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
         <Metric
           label="Final / m²"
           value={`${formatMillionTomans(result.final_price_per_sqm)} M Tomans`}
-          subValue={`≈ $${(result.final_price_per_sqm / result.usd_rate).toFixed(0)}/m²`}
+          subValue={`≈ $${(((result.final_price_per_sqm * 1_000_000) / result.usd_rate)).toFixed(0)}/m²`}
           color="#f97316"
           icon={<DollarSign size={12} />}
           delay={200}
@@ -387,7 +392,7 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
             {formatMillionTomans(result.final_total_price)} M Tomans
           </div>
           <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
-            {formatFull(result.final_total_price)} Rials &nbsp;·&nbsp; ≈ ${usdPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })} USD
+            {formatFullRials(result.final_total_price)} Rials &nbsp;·&nbsp; ≈ ${usdPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })} USD
           </div>
         </div>
 

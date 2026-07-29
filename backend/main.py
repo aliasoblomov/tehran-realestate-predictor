@@ -230,6 +230,7 @@ def fetch_nearest_neighborhood(client, lat: float, lon: float) -> dict:
                    ST_GEOGPOINT({lon}, {lat})
                ) AS dist_m
         FROM {_tbl('ref_neighborhoods')}
+        WHERE neighborhood_slug IS NOT NULL AND latitude IS NOT NULL AND longitude IS NOT NULL
         ORDER BY dist_m ASC
         LIMIT 1
     """
