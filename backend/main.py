@@ -154,24 +154,16 @@ def scrape_live_rates() -> dict:
         "Accept-Language": "fa-IR,fa;q=0.9,en;q=0.8",
     }
 
-    # 1. Fetch USD from BrsApi
+    # 1. Fetch USD from BrsApi using subprocess curl to avoid blocks
     try:
-        usd_url = "https://Api.BrsApi.ir/Market/Gold_Currency.php?key=B8rWPPXwLqJFRKbKv347ynyP8ahduHWy"
-        resp = requests.get(usd_url, headers=headers, timeout=8)
-        if resp.status_code == 200:
-            data = resp.json()
-            for curr in data.get("currency", []):
-                if curr.get("name") == "دلار" or curr.get("name") == "Dollar":
-                    # BrsApi usually returns values in Tomans or Rials. 
-                    # If it's e.g. 60,000 (Tomans), we need Rials (600,000).
-                    try:
-                        val = float(str(curr.get("price", "0")).replace(",", ""))
-                        if 10_000 < val < 150_000:
-                            val *= 10
-                        result["usd"] = val
-                        break
-                    except ValueError:
-                        pass
+        import subprocess, json
+        cmd = 'curl -s "https://Api.BrsApi.ir/Market/Gold_Currency.php?key=B8rWPPXwLqJFRKbKv347ynyP8ahduHWy"'
+        output = subprocess.check_output(cmd, shell=True, text=True, timeout=8)
+        data = json.loads(output)
+        for curr in data.get("currency", []):
+            if curr.get("symbol") == "USD":
+                result["usd"] = float(curr.get("price", 0))
+                break
     except Exception as e:
         print(f"[scrape] USD failed: {e}")
 
@@ -459,10 +451,27 @@ def engineer_micro_features(req: PredictRequest, spatial: dict,
     ]
 
 
-def build_macro_features(year_jalali, usd, tedpix,
-                          lag1, lag3, lag6, tedpix_lag3, region_id) -> list:
+def build_macro_features(macro_row, live_usd, live_tedpix, region_id) -> list:
     ohe = [1 if i == region_id else 0 for i in range(1, 23)]
-    return [year_jalali, usd, tedpix, lag1, lag3, lag6, tedpix_lag3] + ohe
+    return [
+        int(macro_row["Year_Jalali"]),
+        int(macro_row["Month_Jalali"]),
+        float(macro_row["Inflation_Housing_YoY"]),
+        live_usd,
+        live_tedpix,
+        float(macro_row["USD_Free_Market_Lag_1"]),
+        float(macro_row["USD_Free_Market_Lag_3"]),
+        float(macro_row["USD_Free_Market_Lag_6"]),
+        float(macro_row["TEDPIX_Index_Lag_1"]),
+        float(macro_row["TEDPIX_Index_Lag_3"]),
+        float(macro_row["TEDPIX_Index_Lag_6"]),
+        float(macro_row["Inflation_General_YoY_Lag_3"]),
+        float(macro_row["Inflation_General_YoY_Lag_6"]),
+        float(macro_row["Construction_Cost_YoY_Lag_3"]),
+        float(macro_row["Construction_Cost_YoY_Lag_6"]),
+        float(macro_row["Liquidity_M2_Growth_Lag_3"]),
+        float(macro_row["Liquidity_M2_Growth_Lag_6"]),
+    ] + ohe
 
 
 # ─────────────────────────────────────────────────────────
@@ -530,14 +539,7 @@ async def predict(req: PredictRequest):
 
         # D: Inference
         print("[D] Running inference...")
-        macro_feat = build_macro_features(
-            int(macro_row["Year_Jalali"]), live_usd, live_tedpix,
-            float(macro_row["USD_Free_Market_Lag_1"]),
-            float(macro_row["USD_Free_Market_Lag_3"]),
-            float(macro_row["USD_Free_Market_Lag_6"]),
-            float(macro_row["TEDPIX_Index_Lag_3"]),
-            region_id,
-        )
+        macro_feat = build_macro_features(macro_row, live_usd, live_tedpix, region_id)
         macro_dm = xgb.DMatrix(
             np.array([macro_feat], dtype=float),
             feature_names=MACRO_COLUMNS,

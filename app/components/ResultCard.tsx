@@ -327,10 +327,10 @@ export default function ResultCard({ result, error, isLoading }: ResultCardProps
         />
         <Metric
           label="USD Rate"
-          value={`${(result.usd_rate / 1000).toFixed(0)}K IRR`}
+          value={`${result.usd_rate.toLocaleString("en-US")} Tomans`}
           subValue="Live free market rate"
-          color="#a78bfa"
-          icon={<TrendingUp size={12} />}
+          color="#a855f7"
+          icon={<Zap size={12} />}
           delay={300}
         />
       </div>
