@@ -108,6 +108,7 @@ export default function Home() {
           has_elevator: values.has_elevator,
           has_parking: values.has_parking,
           is_villa: values.is_villa,
+          usd_rate: usdRate || undefined,
         };
 
         if (overrideSlug) {

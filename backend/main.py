@@ -271,17 +271,88 @@ def fetch_region_id_from_borders(client, lat: float, lon: float) -> Optional[int
     return None
 
 
+def get_val(d: dict, *keys, default=0.0):
+    """Safe, case-insensitive value lookup from a dictionary."""
+    if not isinstance(d, dict):
+        return default
+    # 1. Exact match
+    for k in keys:
+        if k in d and d[k] is not None:
+            return d[k]
+    # 2. Case-insensitive match
+    d_lower = {str(k).lower(): v for k, v in d.items()}
+    for k in keys:
+        kl = str(k).lower()
+        if kl in d_lower and d_lower[kl] is not None:
+            return d_lower[kl]
+    return default
+
+
 def fetch_latest_macro_row(client) -> dict:
-    query = f"""
-        SELECT *
-        FROM `{BQ_DATASET}.macro_training_v2`
-        ORDER BY Year_Jalali DESC, Month_Jalali DESC
-        LIMIT 1
-    """
-    rows = list(client.query(query).result())
-    if not rows:
-        raise ValueError("macro_training_v2 returned no rows.")
-    return dict(rows[0].items())
+    for tbl in ["macro_training_v2", "macro_training_dataset", "macro_monthly_database"]:
+        try:
+            query = f"""
+                SELECT *
+                FROM `{BQ_DATASET}.{tbl}`
+                ORDER BY Year_Jalali DESC, Month_Jalali DESC
+                LIMIT 1
+            """
+            rows = list(client.query(query).result())
+            if rows:
+                print(f"[fetch_latest_macro_row] Loaded row from {tbl}")
+                return dict(rows[0].items())
+        except Exception as e:
+            print(f"[fetch_latest_macro_row_error {tbl}] {e}")
+
+    print("[fetch_latest_macro_row] Fallback to default macro row")
+    return {
+        "Year_Jalali": 1403,
+        "Month_Jalali": 11,
+        "USD_Return_1M": 0.05,
+        "USD_Return_3M": 0.15,
+        "USD_Return_12M": 0.60,
+        "USD_MA_Ratio_12": 1.10,
+        "USD_Acceleration": 0.02,
+        "Housing_to_USD_Lag_1": 0.00095,
+        "Housing_to_USD_Lag_3": 0.00092,
+        "Housing_to_USD_Lag_12": 0.00088,
+        "Housing_to_USD_ZScore_Lag_1": 0.5,
+        "Coin_Bubble": 0.18,
+        "Iran_GPR": 140.0,
+        "Iran_GPR_MA3": 130.0,
+        "M2_Growth_YoY_Lag_3": 0.35,
+        "M2_Growth_Acceleration": 0.01,
+        "Monetary_Excess": 0.08,
+        "Inflation_General_YoY_Lag_3": 0.42,
+        "TEDPIX_Return_3M": 0.10,
+        "Construction_Cost_Real": 1.05,
+        "Month_Sin": 0.5,
+        "Month_Cos": -0.866,
+        "USD_Free_Market": 188000.0,
+    }
+
+
+def fetch_latest_usd_from_bq(client) -> Optional[float]:
+    for tbl in ["macro_monthly_database", "macro_training_dataset", "macro_training_v2"]:
+        try:
+            q = f"SELECT * FROM `{BQ_DATASET}.{tbl}` ORDER BY Year_Jalali DESC, Month_Jalali DESC LIMIT 1"
+            rows = list(client.query(q).result())
+            if rows:
+                r = dict(rows[0].items())
+                val = get_val(
+                    r,
+                    "USD_Free_Market", "usd_free_market",
+                    "USD_Price", "usd_price",
+                    "USD_Rate", "usd_rate",
+                    "USD_Toman", "usd_toman",
+                    "USD", "usd",
+                    default=None
+                )
+                if val is not None and float(val) > 1000:
+                    return float(val)
+        except Exception as e:
+            print(f"[fetch_latest_usd_from_bq_error {tbl}] {e}")
+    return None
 
 
 def fetch_spatial_features(client, lat: float, lon: float) -> dict:
@@ -415,26 +486,26 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
 
 def build_macro_features(row: dict) -> list:
     return [
-        float(row["USD_Return_1M"]),
-        float(row["USD_Return_3M"]),
-        float(row["USD_Return_12M"]),
-        float(row["USD_MA_Ratio_12"]),
-        float(row["USD_Acceleration"]),
-        float(row["Housing_to_USD_Lag_1"]),
-        float(row["Housing_to_USD_Lag_3"]),
-        float(row["Housing_to_USD_Lag_12"]),
-        float(row["Housing_to_USD_ZScore_Lag_1"]),
-        float(row["Coin_Bubble"]),
-        float(row["Iran_GPR"]),
-        float(row["Iran_GPR_MA3"]),
-        float(row["M2_Growth_YoY_Lag_3"]),
-        float(row["M2_Growth_Acceleration"]),
-        float(row["Monetary_Excess"]),
-        float(row["Inflation_General_YoY_Lag_3"]),
-        float(row["TEDPIX_Return_3M"]),
-        float(row["Construction_Cost_Real"]),
-        float(row["Month_Sin"]),
-        float(row["Month_Cos"]),
+        float(get_val(row, "USD_Return_1M", "usd_return_1m", default=0.0)),
+        float(get_val(row, "USD_Return_3M", "usd_return_3m", default=0.0)),
+        float(get_val(row, "USD_Return_12M", "usd_return_12m", default=0.0)),
+        float(get_val(row, "USD_MA_Ratio_12", "usd_ma_ratio_12", default=1.0)),
+        float(get_val(row, "USD_Acceleration", "usd_acceleration", default=0.0)),
+        float(get_val(row, "Housing_to_USD_Lag_1", "housing_to_usd_lag_1", "Housing_to_USD_Lag1", "housing_to_usd_lag1", default=0.001)),
+        float(get_val(row, "Housing_to_USD_Lag_3", "housing_to_usd_lag_3", "Housing_to_USD_Lag3", "housing_to_usd_lag3", default=0.001)),
+        float(get_val(row, "Housing_to_USD_Lag_12", "housing_to_usd_lag_12", "Housing_to_USD_Lag12", "housing_to_usd_lag12", default=0.001)),
+        float(get_val(row, "Housing_to_USD_ZScore_Lag_1", "housing_to_usd_zscore_lag_1", "Housing_to_USD_ZScore_Lag1", "housing_to_usd_zscore_lag1", default=0.0)),
+        float(get_val(row, "Coin_Bubble", "coin_bubble", default=0.0)),
+        float(get_val(row, "Iran_GPR", "iran_gpr", default=100.0)),
+        float(get_val(row, "Iran_GPR_MA3", "iran_gpr_ma3", default=100.0)),
+        float(get_val(row, "M2_Growth_YoY_Lag_3", "m2_growth_yoy_lag_3", "Liquidity_M2_Growth_Lag_3", default=0.35)),
+        float(get_val(row, "M2_Growth_Acceleration", "m2_growth_acceleration", default=0.0)),
+        float(get_val(row, "Monetary_Excess", "monetary_excess", default=0.0)),
+        float(get_val(row, "Inflation_General_YoY_Lag_3", "inflation_general_yoy_lag_3", default=0.40)),
+        float(get_val(row, "TEDPIX_Return_3M", "tedpix_return_3m", default=0.0)),
+        float(get_val(row, "Construction_Cost_Real", "construction_cost_real", "Construction_Cost_YoY_Lag_3", default=1.0)),
+        float(get_val(row, "Month_Sin", "month_sin", default=0.0)),
+        float(get_val(row, "Month_Cos", "month_cos", default=0.0)),
     ]
 
 
@@ -572,6 +643,7 @@ class PredictRequest(BaseModel):
     has_parking: bool = True
     is_villa: bool = False
     selected_neighborhood_slug: Optional[str] = None
+    usd_rate: Optional[float] = None
 
 
 class SpatialFeatures(BaseModel):
@@ -660,13 +732,39 @@ async def predict(req: PredictRequest):
     try:
         print(f"[predict] lat={req.lat}, lon={req.lon}, area={req.area}, slug={req.selected_neighborhood_slug}")
 
-        # 1. Live USD
-        live_usd_scraped = scrape_live_usd()
+        # 1. Live USD resolution cascade
+        live_usd = None
+        if req.usd_rate and float(req.usd_rate) > 1000:
+            live_usd = float(req.usd_rate)
+
+        if live_usd is None:
+            live_usd_scraped = scrape_live_usd()
+            if live_usd_scraped and live_usd_scraped > 1000:
+                live_usd = live_usd_scraped
 
         # 2. BigQuery macro row
         bq = get_bq_client()
         macro_row = fetch_latest_macro_row(bq)
-        live_usd = live_usd_scraped or float(macro_row["USD_Free_Market"])
+
+        if live_usd is None:
+            macro_usd = get_val(
+                macro_row,
+                "USD_Free_Market", "usd_free_market",
+                "USD_Price", "usd_price",
+                "USD_Rate", "usd_rate",
+                "USD_Toman", "usd_toman",
+                "USD", "usd",
+                "USD_Free_Market_Lag_1", "usd_free_market_lag_1",
+                default=None
+            )
+            if macro_usd is not None and float(macro_usd) > 1000:
+                live_usd = float(macro_usd)
+
+        if live_usd is None:
+            live_usd = fetch_latest_usd_from_bq(bq)
+
+        if live_usd is None or live_usd <= 1000:
+            live_usd = 188000.0  # Fallback default
 
         # 3. Neighborhood selection
         candidates  = get_top_candidate_neighborhoods(req.lat, req.lon, top_k=3)
@@ -696,8 +794,11 @@ async def predict(req: PredictRequest):
         macro_feat = build_macro_features(macro_row)
         macro_dm   = xgb.DMatrix(np.array([macro_feat], dtype=float), feature_names=MACRO_COLUMNS)
 
-        housing_to_usd_lag1 = float(macro_row["Housing_to_USD_Lag_1"])
-        log_anchor          = math.log(housing_to_usd_lag1)
+        housing_to_usd_lag1 = float(get_val(macro_row, "Housing_to_USD_Lag_1", "housing_to_usd_lag_1", "Housing_to_USD_Lag1", "housing_to_usd_lag1", default=0.00095))
+        if housing_to_usd_lag1 <= 0:
+            housing_to_usd_lag1 = 0.00095
+
+        log_anchor = math.log(housing_to_usd_lag1)
 
         macro_diff     = float(_cache["macro"].predict(macro_dm)[0])
         macro_diff_q05 = float(_cache["macro_q05"].predict(macro_dm)[0])
@@ -731,11 +832,11 @@ async def predict(req: PredictRequest):
         }, ensure_ascii=False))
 
         # 11. Market Pulse
-        inflation_yoy = float(macro_row.get("Inflation_General_YoY_Lag_3", 0.0))
-        gpr_index     = float(macro_row.get("Iran_GPR", 0.0))
-        gpr_ma3       = float(macro_row.get("Iran_GPR_MA3", 0.0))
-        month_jalali  = int(macro_row.get("Month_Jalali", 0))
-        year_jalali   = int(macro_row.get("Year_Jalali", 0))
+        inflation_yoy = float(get_val(macro_row, "Inflation_General_YoY_Lag_3", "inflation_general_yoy_lag_3", default=0.40))
+        gpr_index     = float(get_val(macro_row, "Iran_GPR", "iran_gpr", default=100.0))
+        gpr_ma3       = float(get_val(macro_row, "Iran_GPR_MA3", "iran_gpr_ma3", default=100.0))
+        month_jalali  = int(get_val(macro_row, "Month_Jalali", "month_jalali", default=11))
+        year_jalali   = int(get_val(macro_row, "Year_Jalali", "year_jalali", default=1403))
         region_avg    = housing_to_usd_lag1 * live_usd
 
         return PredictResponse(
