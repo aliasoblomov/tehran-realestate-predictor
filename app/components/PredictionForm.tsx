@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Home,
   Building2,
@@ -13,7 +13,9 @@ import {
   Loader2,
   Zap,
   MapPin,
+  Check,
 } from "lucide-react";
+import { getTopCandidates, CandidateNeighborhood } from "../utils/neighborhoods";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface FormValues {
@@ -30,7 +32,7 @@ export interface FormValues {
 
 interface PredictionFormProps {
   selectedLocation: { lat: number; lon: number } | null;
-  onSubmit: (values: FormValues) => void;
+  onSubmit: (values: FormValues, selectedSlug?: string) => void;
   isLoading: boolean;
 }
 
@@ -381,6 +383,22 @@ export default function PredictionForm({
   const [step, setStep] = useState<Step>("type");
   const [vals, setVals] = useState<FormValues>(DEFAULT);
 
+  // Compute 3 closest candidate neighborhoods
+  const candidates = selectedLocation
+    ? getTopCandidates(selectedLocation.lat, selectedLocation.lon, 3)
+    : [];
+
+  const [selectedSlug, setSelectedSlug] = useState<string>("");
+
+  useEffect(() => {
+    if (candidates.length > 0) {
+      // Pre-select the closest neighborhood by default
+      setSelectedSlug(candidates[0].slug);
+    } else {
+      setSelectedSlug("");
+    }
+  }, [selectedLocation?.lat, selectedLocation?.lon]);
+
   const set = useCallback(<K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setVals((prev) => ({ ...prev, [key]: value }));
   }, []);
@@ -648,6 +666,113 @@ export default function PredictionForm({
         <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
           Ready to Valuate
         </div>
+
+        {/* ── Neighborhood Disambiguation (Top 3 Candidates) ── */}
+        {selectedLocation && candidates.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              background: "rgba(249, 115, 22, 0.06)",
+              border: "1.5px solid rgba(249, 115, 22, 0.3)",
+              borderRadius: "12px",
+              padding: "12px 14px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <MapPin size={13} color="#f97316" />
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#f97316" }}>
+                  Select Neighborhood (3 Closest)
+                </span>
+              </div>
+              <span style={{ fontSize: "0.62rem", color: "#94a3b8" }}>
+                Coordinates match
+              </span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {candidates.map((c, idx) => {
+                const isSelected = (selectedSlug ? selectedSlug === c.slug : idx === 0);
+                return (
+                  <button
+                    key={c.slug}
+                    type="button"
+                    onClick={() => setSelectedSlug(c.slug)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      background: isSelected
+                        ? "linear-gradient(135deg, rgba(249,115,22,0.2), rgba(245,158,11,0.12))"
+                        : "rgba(255,255,255,0.03)",
+                      border: isSelected
+                        ? "1.5px solid #f97316"
+                        : "1px solid rgba(255,255,255,0.06)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div
+                        style={{
+                          width: "14px",
+                          height: "14px",
+                          borderRadius: "50%",
+                          border: isSelected ? "4px solid #f97316" : "1.5px solid #64748b",
+                          background: isSelected ? "#fff" : "transparent",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div>
+                        <span
+                          style={{
+                            fontSize: "0.78rem",
+                            fontWeight: isSelected ? 700 : 500,
+                            color: isSelected ? "#f8fafc" : "#94a3b8",
+                          }}
+                        >
+                          {c.name}
+                        </span>
+                        {idx === 0 && (
+                          <span
+                            style={{
+                              marginLeft: "6px",
+                              fontSize: "0.58rem",
+                              fontWeight: 700,
+                              background: "rgba(34,197,94,0.15)",
+                              color: "#22c55e",
+                              border: "1px solid rgba(34,197,94,0.3)",
+                              borderRadius: "4px",
+                              padding: "1px 5px",
+                            }}
+                          >
+                            Closest
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", fontSize: "0.65rem", color: isSelected ? "#f97316" : "#64748b" }}>
+                      <span>{c.distance_km} km</span>
+                      <span style={{ marginLeft: "4px", opacity: 0.7 }}>· Region {c.region_id}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div
           style={{
             background: "rgba(255,255,255,0.02)",
@@ -687,6 +812,8 @@ export default function PredictionForm({
 
   const isReview = step === "review";
   const isFirst  = step === "type";
+
+  const activeSlug = selectedSlug || (candidates.length > 0 ? candidates[0].slug : undefined);
 
   return (
     <div
@@ -779,7 +906,7 @@ export default function PredictionForm({
         {isReview && (
           <button
             id="submit-valuation"
-            onClick={() => canProceed && !isLoading && onSubmit(vals)}
+            onClick={() => canProceed && !isLoading && onSubmit(vals, activeSlug)}
             disabled={!canProceed || isLoading}
             className="btn-gold"
             style={{

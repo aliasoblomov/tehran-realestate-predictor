@@ -499,57 +499,44 @@ def get_bq_client():
     return bigquery.Client(project="siavak-temp-aliz")
 
 
-# ─── MODEL CACHE (background-threaded load) ──────────────────────────────────────
+# ─── MODEL CACHE ────────────────────────────────────────────────────────────────
 _cache: dict = {}
-_loading_error: Optional[str] = None
 
 
-def _load_models_sync() -> None:
-    """Load all 5 V2 models in a background thread.
-    Uvicorn is already serving requests by the time this runs,
-    so Cloud Run health checks succeed immediately.
-    """
-    global _loading_error
-    print("[startup] Background thread: loading V2 models...")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("[startup] Loading V2 XGBoost models synchronously...")
     try:
         macro = xgb.Booster()
         macro.load_model(os.path.join(MODELS_DIR, "macro_model_v2.json"))
-        print("[startup] macro_model_v2 ✓")
+        print("[startup] macro_model_v2.json loaded ✓")
 
         macro_q05 = xgb.Booster()
         macro_q05.load_model(os.path.join(MODELS_DIR, "macro_q05_v2.json"))
-        print("[startup] macro_q05_v2 ✓")
+        print("[startup] macro_q05_v2.json loaded ✓")
 
         macro_q95 = xgb.Booster()
         macro_q95.load_model(os.path.join(MODELS_DIR, "macro_q95_v2.json"))
-        print("[startup] macro_q95_v2 ✓")
+        print("[startup] macro_q95_v2.json loaded ✓")
 
         micro = xgb.Booster()
         micro.load_model(os.path.join(MODELS_DIR, "micro_model_v2.json"))
-        print("[startup] micro_model_v2 ✓")
+        print("[startup] micro_model_v2.json loaded ✓")
 
         with open(os.path.join(MODELS_DIR, "neighborhood_encoding_v2.json"), encoding="utf-8") as f:
             enc = json.load(f)
-        print("[startup] neighborhood_encoding_v2 ✓")
+        print("[startup] neighborhood_encoding_v2.json loaded ✓")
 
         _cache["macro"]     = macro
         _cache["macro_q05"] = macro_q05
         _cache["macro_q95"] = macro_q95
         _cache["micro"]     = micro
         _cache["encoding"]  = enc
-        print("[startup] ✅ All V2 models ready — predictions enabled.")
+        print("[startup] ✅ All V2 models loaded successfully. Ready for predictions.")
     except Exception as e:
-        _loading_error = str(e)
-        print(f"[startup] ❌ Model loading failed: {e}")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Kick off model loading in a daemon background thread immediately.
-    # Uvicorn starts accepting requests (and health checks) right away.
-    t = threading.Thread(target=_load_models_sync, daemon=True)
-    t.start()
-    print("[startup] Server is up. Models loading in background thread...")
+        print(f"[startup] ❌ Fatal error loading models: {e}")
+        traceback.print_exc()
+        raise e
     yield
     _cache.clear()
     print("[shutdown] Models cleared.")
@@ -642,26 +629,21 @@ class PredictResponse(BaseModel):
 # ─── ROUTES ─────────────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 def root():
-    models_ready = "macro" in _cache and "micro" in _cache
     return {
         "service": "Tehran Real Estate Predictor API V2",
         "version": "2.0.0",
         "status": "running",
-        "models_ready": models_ready,
-        "loading_error": _loading_error,
+        "models_ready": "macro" in _cache and "micro" in _cache,
         "docs": "/docs",
     }
 
 
 @app.get("/health", tags=["Health"])
 def health():
-    # Always return 200 so Cloud Run health checks pass.
-    # Report degraded when models are still loading.
-    models_ready = "macro" in _cache and "micro" in _cache
+    ready = "macro" in _cache and "micro" in _cache
     return {
-        "status": "healthy" if models_ready else "loading",
-        "models_ready": models_ready,
-        "loading_error": _loading_error,
+        "status": "healthy" if ready else "unhealthy",
+        "models_ready": ready,
         "macro_loaded":     "macro"     in _cache,
         "macro_q05_loaded": "macro_q05" in _cache,
         "macro_q95_loaded": "macro_q95" in _cache,
@@ -672,12 +654,8 @@ def health():
 
 @app.post("/predict", response_model=PredictResponse, tags=["Prediction"])
 async def predict(req: PredictRequest):
-    if "macro" not in _cache:
-        detail = (
-            f"Models still loading. Please retry in a moment. "
-            f"{'Error: ' + _loading_error if _loading_error else 'Loading in progress...'}"
-        )
-        raise HTTPException(status_code=503, detail=detail)
+    if "macro" not in _cache or "micro" not in _cache:
+        raise HTTPException(status_code=500, detail="Models not loaded. Server startup may have failed.")
 
     try:
         print(f"[predict] lat={req.lat}, lon={req.lon}, area={req.area}, slug={req.selected_neighborhood_slug}")
