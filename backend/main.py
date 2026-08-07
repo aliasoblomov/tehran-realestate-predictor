@@ -504,91 +504,32 @@ _cache: dict = {}
 _loading_error: Optional[str] = None
 
 
-def _load_xgb_model(filename: str) -> xgb.Booster:
-    booster = xgb.Booster()
-    gz_path = os.path.join(MODELS_DIR, filename + ".gz")
-    json_path = os.path.join(MODELS_DIR, filename)
-
-    # Check for split parts (e.g. micro_model_v2.part_aa, part_ab, ...)
-    stem = filename.replace(".json", "")
-    parts = sorted([f for f in os.listdir(MODELS_DIR) if f.startswith(f"{stem}.part_")])
-
-    if parts:
-        print(f"[loader] Recombining {len(parts)} split parts for {filename}...")
-        compressed_data = b"".join(
-            open(os.path.join(MODELS_DIR, p), "rb").read() for p in parts
-        )
-        import gzip
-        decompressed_data = gzip.decompress(compressed_data)
-        try:
-            booster.load_model(bytearray(decompressed_data))
-        except Exception:
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-                tmp.write(decompressed_data)
-                tmp_path = tmp.name
-            booster.load_model(tmp_path)
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-    elif os.path.exists(gz_path):
-        import gzip
-        with gzip.open(gz_path, "rb") as f:
-            decompressed_data = f.read()
-        try:
-            booster.load_model(bytearray(decompressed_data))
-        except Exception:
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-                tmp.write(decompressed_data)
-                tmp_path = tmp.name
-            booster.load_model(tmp_path)
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-    elif os.path.exists(json_path):
-        booster.load_model(json_path)
-    else:
-        raise FileNotFoundError(f"No valid model file or parts found for {filename}.")
-    return booster
-
-
-def _load_json_dict(filename: str) -> dict:
-    gz_path = os.path.join(MODELS_DIR, filename + ".gz")
-    json_path = os.path.join(MODELS_DIR, filename)
-    if os.path.exists(gz_path):
-        import gzip
-        with gzip.open(gz_path, "rt", encoding="utf-8") as f:
-            return json.load(f)
-    elif os.path.exists(json_path):
-        with open(json_path, encoding="utf-8") as f:
-            return json.load(f)
-    else:
-        raise FileNotFoundError(f"Neither {gz_path} nor {json_path} found.")
-
-
 def _load_models_sync() -> None:
     """Load all 5 V2 models in a background thread.
-    Supports .json, .json.gz, and split .part_ formats.
+    Uvicorn is already serving requests by the time this runs,
+    so Cloud Run health checks succeed immediately.
     """
     global _loading_error
     print("[startup] Background thread: loading V2 models...")
     try:
-        macro = _load_xgb_model("macro_model_v2.json")
+        macro = xgb.Booster()
+        macro.load_model(os.path.join(MODELS_DIR, "macro_model_v2.json"))
         print("[startup] macro_model_v2 ✓")
 
-        macro_q05 = _load_xgb_model("macro_q05_v2.json")
+        macro_q05 = xgb.Booster()
+        macro_q05.load_model(os.path.join(MODELS_DIR, "macro_q05_v2.json"))
         print("[startup] macro_q05_v2 ✓")
 
-        macro_q95 = _load_xgb_model("macro_q95_v2.json")
+        macro_q95 = xgb.Booster()
+        macro_q95.load_model(os.path.join(MODELS_DIR, "macro_q95_v2.json"))
         print("[startup] macro_q95_v2 ✓")
 
-        micro = _load_xgb_model("micro_model_v2.json")
+        micro = xgb.Booster()
+        micro.load_model(os.path.join(MODELS_DIR, "micro_model_v2.json"))
         print("[startup] micro_model_v2 ✓")
 
-        enc = _load_json_dict("neighborhood_encoding_v2.json")
+        with open(os.path.join(MODELS_DIR, "neighborhood_encoding_v2.json"), encoding="utf-8") as f:
+            enc = json.load(f)
         print("[startup] neighborhood_encoding_v2 ✓")
 
         _cache["macro"]     = macro

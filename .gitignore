@@ -17,11 +17,14 @@ out/
 .env.test.local
 .env.production.local
 
-# ML Model files
-!backend/models/*.json
-!backend/models/*.part_*
-backend/models/micro_model_v2.json
-backend/models/micro_model_v2.json.gz
+# ML Model files — V2 models explicitly allowed
+api/models/*.json
+!api/models/README.md
+!backend/models/macro_model_v2.json
+!backend/models/macro_q05_v2.json
+!backend/models/macro_q95_v2.json
+!backend/models/micro_model_v2.json
+!backend/models/neighborhood_encoding_v2.json
 !backend/models/README.md
 
 # Local env files
