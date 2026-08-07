@@ -17,10 +17,11 @@ out/
 .env.test.local
 .env.production.local
 
-# ML Model files — place manually in backend/models/ before deploying
-api/models/*.json
-!api/models/README.md
-backend/models/*.json
+# ML Model files
+!backend/models/*.json
+!backend/models/*.part_*
+backend/models/micro_model_v2.json
+backend/models/micro_model_v2.json.gz
 !backend/models/README.md
 
 # Local env files
