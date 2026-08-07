@@ -8,6 +8,7 @@ import os
 import math
 import re
 import traceback
+import threading
 from contextlib import asynccontextmanager
 from typing import Optional, List
 
@@ -17,7 +18,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# ─── CONSTANTS ─────────────────────────────────────────────────────────────────
+# ─── CONSTANTS ──────────────────────────────────────────────────────────────────
 TEHRAN_CBD_LON = 51.4183
 TEHRAN_CBD_LAT = 35.6961
 
@@ -32,7 +33,7 @@ FALLBACK_SEISMIC_RISK = 3
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 
-# ─── NEIGHBORHOOD DATA ──────────────────────────────────────────────────────────
+# ─── NEIGHBORHOOD DATA ───────────────────────────────────────────────────────────
 NEIGHBORHOODS_DATA = [
   {"slug": "tajrish", "region_id": 1, "lat": 35.802185, "lon": 51.431004},
   {"slug": "elahiyeh", "region_id": 1, "lat": 35.790916, "lon": 51.426933},
@@ -196,61 +197,28 @@ NEIGHBORHOODS_DATA = [
   {"slug": "azad-shahr", "region_id": 22, "lat": 35.746273, "lon": 51.175713},
 ]
 
-# ─── MODEL FEATURE COLUMNS ──────────────────────────────────────────────────────
+# ─── MODEL FEATURE COLUMNS ───────────────────────────────────────────────────────
 MACRO_COLUMNS = [
-    "USD_Return_1M",
-    "USD_Return_3M",
-    "USD_Return_12M",
-    "USD_MA_Ratio_12",
-    "USD_Acceleration",
-    "Housing_to_USD_Lag_1",
-    "Housing_to_USD_Lag_3",
-    "Housing_to_USD_Lag_12",
-    "Housing_to_USD_ZScore_Lag_1",
-    "Coin_Bubble",
-    "Iran_GPR",
-    "Iran_GPR_MA3",
-    "M2_Growth_YoY_Lag_3",
-    "M2_Growth_Acceleration",
-    "Monetary_Excess",
-    "Inflation_General_YoY_Lag_3",
-    "TEDPIX_Return_3M",
-    "Construction_Cost_Real",
-    "Month_Sin",
-    "Month_Cos",
+    "USD_Return_1M", "USD_Return_3M", "USD_Return_12M", "USD_MA_Ratio_12",
+    "USD_Acceleration", "Housing_to_USD_Lag_1", "Housing_to_USD_Lag_3",
+    "Housing_to_USD_Lag_12", "Housing_to_USD_ZScore_Lag_1", "Coin_Bubble",
+    "Iran_GPR", "Iran_GPR_MA3", "M2_Growth_YoY_Lag_3", "M2_Growth_Acceleration",
+    "Monetary_Excess", "Inflation_General_YoY_Lag_3", "TEDPIX_Return_3M",
+    "Construction_Cost_Real", "Month_Sin", "Month_Cos",
 ]
 
 MICRO_COLUMNS = [
-    "has_elevator",
-    "has_parking",
-    "is_price_converted",
-    "is_villa",
-    "land_size",
-    "building_size",
-    "rooms_count",
-    "building_age",
-    "location_latitude",
-    "location_longitude",
-    "location_radius",
-    "commercial_density",
-    "dist_to_metro",
-    "dist_to_cbd",
-    "dist_to_highway",
-    "seismic_risk_level",
-    "air_quality_aqi",
-    "traffic_zone_status",
-    "urban_decay_class",
-    "floor_elevator_penalty",
-    "bonus_tod_livability",
-    "penalty_traffic_nuisance",
-    "suburban_metro_dependency",
-    "highway_sweetspot",
-    "region_id",
-    "floor_num",
-    "total_floors_num",
-    "unit_per_floor_num",
+    "has_elevator", "has_parking", "is_price_converted", "is_villa",
+    "land_size", "building_size", "rooms_count", "building_age",
+    "location_latitude", "location_longitude", "location_radius",
+    "commercial_density", "dist_to_metro", "dist_to_cbd", "dist_to_highway",
+    "seismic_risk_level", "air_quality_aqi", "traffic_zone_status",
+    "urban_decay_class", "floor_elevator_penalty", "bonus_tod_livability",
+    "penalty_traffic_nuisance", "suburban_metro_dependency", "highway_sweetspot",
+    "region_id", "floor_num", "total_floors_num", "unit_per_floor_num",
     "neighborhood_encoded",
 ]
+
 
 # ─── HELPERS ────────────────────────────────────────────────────────────────────
 def haversine_distance_km(lat1, lon1, lat2, lon2):
@@ -304,7 +272,6 @@ def fetch_region_id_from_borders(client, lat: float, lon: float) -> Optional[int
 
 
 def fetch_latest_macro_row(client) -> dict:
-    """Fetch the latest row from macro_training_v2 (V2 feature set)."""
     query = f"""
         SELECT *
         FROM `{BQ_DATASET}.macro_training_v2`
@@ -447,7 +414,6 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
 
 
 def build_macro_features(row: dict) -> list:
-    """Build the exact 20-feature vector for V2 macro model."""
     return [
         float(row["USD_Return_1M"]),
         float(row["USD_Return_3M"]),
@@ -473,26 +439,25 @@ def build_macro_features(row: dict) -> list:
 
 
 def engineer_micro_features(req, spatial: dict, region_id: int, neighborhood_encoded: float) -> list:
-    """Build the exact 29-feature vector for V2 micro model."""
-    floor_elevator_penalty   = req.floor_num * (1 - int(req.has_elevator))
-    bonus_tod_livability     = max(0.0, 1.0 - spatial["dist_to_metro"] / 1500.0)
-    penalty_traffic_nuisance = float(spatial["traffic_zone_status"])
-    suburban_flag            = 1.0 if spatial["dist_to_cbd"] > 12000 else 0.0
+    floor_elevator_penalty    = req.floor_num * (1 - int(req.has_elevator))
+    bonus_tod_livability      = max(0.0, 1.0 - spatial["dist_to_metro"] / 1500.0)
+    penalty_traffic_nuisance  = float(spatial["traffic_zone_status"])
+    suburban_flag             = 1.0 if spatial["dist_to_cbd"] > 12000 else 0.0
     suburban_metro_dependency = (spatial["dist_to_metro"] / 1000.0) * suburban_flag
-    highway_sweetspot        = 1 if 200 <= spatial["dist_to_highway"] <= 900 else 0
+    highway_sweetspot         = 1 if 200 <= spatial["dist_to_highway"] <= 900 else 0
 
     return [
         int(req.has_elevator),
         int(req.has_parking),
-        0,                            # is_price_converted (always 0 at inference)
+        0,                             # is_price_converted
         int(req.is_villa),
-        float(req.area),              # land_size
-        float(req.area),              # building_size
+        float(req.area),               # land_size
+        float(req.area),               # building_size
         float(req.rooms_count),
         float(req.building_age),
-        float(req.lat),               # location_latitude
-        float(req.lon),               # location_longitude
-        0.0,                          # location_radius
+        float(req.lat),                # location_latitude
+        float(req.lon),                # location_longitude
+        0.0,                           # location_radius
         float(spatial["commercial_density"]),
         float(spatial["dist_to_metro"]),
         float(spatial["dist_to_cbd"]),
@@ -508,8 +473,8 @@ def engineer_micro_features(req, spatial: dict, region_id: int, neighborhood_enc
         float(highway_sweetspot),
         float(region_id),
         float(req.floor_num),
-        float(req.total_floors),      # total_floors_num
-        float(req.unit_per_floor),    # unit_per_floor_num
+        float(req.total_floors),       # total_floors_num
+        float(req.unit_per_floor),     # unit_per_floor_num
         float(neighborhood_encoded),
     ]
 
@@ -534,37 +499,57 @@ def get_bq_client():
     return bigquery.Client(project="siavak-temp-aliz")
 
 
-# ─── MODEL CACHE ────────────────────────────────────────────────────────────────
+# ─── MODEL CACHE (background-threaded load) ──────────────────────────────────────
 _cache: dict = {}
+_loading_error: Optional[str] = None
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("[startup] Loading V2 models...")
+def _load_models_sync() -> None:
+    """Load all 5 V2 models in a background thread.
+    Uvicorn is already serving requests by the time this runs,
+    so Cloud Run health checks succeed immediately.
+    """
+    global _loading_error
+    print("[startup] Background thread: loading V2 models...")
     try:
         macro = xgb.Booster()
         macro.load_model(os.path.join(MODELS_DIR, "macro_model_v2.json"))
+        print("[startup] macro_model_v2 ✓")
 
         macro_q05 = xgb.Booster()
         macro_q05.load_model(os.path.join(MODELS_DIR, "macro_q05_v2.json"))
+        print("[startup] macro_q05_v2 ✓")
 
         macro_q95 = xgb.Booster()
         macro_q95.load_model(os.path.join(MODELS_DIR, "macro_q95_v2.json"))
+        print("[startup] macro_q95_v2 ✓")
 
         micro = xgb.Booster()
         micro.load_model(os.path.join(MODELS_DIR, "micro_model_v2.json"))
+        print("[startup] micro_model_v2 ✓")
 
         with open(os.path.join(MODELS_DIR, "neighborhood_encoding_v2.json"), encoding="utf-8") as f:
             enc = json.load(f)
+        print("[startup] neighborhood_encoding_v2 ✓")
 
         _cache["macro"]     = macro
         _cache["macro_q05"] = macro_q05
         _cache["macro_q95"] = macro_q95
         _cache["micro"]     = micro
         _cache["encoding"]  = enc
-        print("[startup] ✅ V2 models loaded: macro + q05 + q95 + micro + encoding")
-    except FileNotFoundError as e:
-        print(f"[startup] ⚠️  Model files not found: {e}")
+        print("[startup] ✅ All V2 models ready — predictions enabled.")
+    except Exception as e:
+        _loading_error = str(e)
+        print(f"[startup] ❌ Model loading failed: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Kick off model loading in a daemon background thread immediately.
+    # Uvicorn starts accepting requests (and health checks) right away.
+    t = threading.Thread(target=_load_models_sync, daemon=True)
+    t.start()
+    print("[startup] Server is up. Models loading in background thread...")
     yield
     _cache.clear()
     print("[shutdown] Models cleared.")
@@ -631,81 +616,83 @@ class MarketPulse(BaseModel):
 
 
 class PredictResponse(BaseModel):
-    # Core prices (Millions of Tomans per m²)
-    base_price_per_sqm: float        # median macro prediction
-    base_price_low: float            # q05 lower bound
-    base_price_high: float           # q95 upper bound
-    micro_ratio: float               # quality multiplier from micro model
+    base_price_per_sqm: float
+    base_price_low: float
+    base_price_high: float
+    micro_ratio: float
     final_price_per_sqm: float
     final_total_price: float
     final_total_low: float
     final_total_high: float
-    # Economic context
     usd_rate: float
     neighborhood: str
     neighborhood_name: str
     region_id: int
     year_jalali: int
     month_jalali: int
-    # Debug / transparency
     macro_diff: float
     macro_diff_q05: float
     macro_diff_q95: float
     housing_to_usd_lag1: float
-    # Spatial
     spatial: SpatialFeatures
     candidate_neighborhoods: List[CandidateNeighborhood]
-    # Market Pulse
     market_pulse: MarketPulse
 
 
 # ─── ROUTES ─────────────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 def root():
+    models_ready = "macro" in _cache and "micro" in _cache
     return {
         "service": "Tehran Real Estate Predictor API V2",
         "version": "2.0.0",
         "status": "running",
-        "models_loaded": "macro" in _cache,
+        "models_ready": models_ready,
+        "loading_error": _loading_error,
         "docs": "/docs",
     }
 
 
 @app.get("/health", tags=["Health"])
 def health():
+    # Always return 200 so Cloud Run health checks pass.
+    # Report degraded when models are still loading.
+    models_ready = "macro" in _cache and "micro" in _cache
     return {
-        "status": "healthy" if ("macro" in _cache and "micro" in _cache) else "degraded",
-        "cache": {
-            "macro_loaded":     "macro"     in _cache,
-            "macro_q05_loaded": "macro_q05" in _cache,
-            "macro_q95_loaded": "macro_q95" in _cache,
-            "micro_loaded":     "micro"     in _cache,
-            "encoding_entries": len(_cache.get("encoding", {})),
-        },
+        "status": "healthy" if models_ready else "loading",
+        "models_ready": models_ready,
+        "loading_error": _loading_error,
+        "macro_loaded":     "macro"     in _cache,
+        "macro_q05_loaded": "macro_q05" in _cache,
+        "macro_q95_loaded": "macro_q95" in _cache,
+        "micro_loaded":     "micro"     in _cache,
+        "encoding_entries": len(_cache.get("encoding", {})),
     }
 
 
 @app.post("/predict", response_model=PredictResponse, tags=["Prediction"])
 async def predict(req: PredictRequest):
     if "macro" not in _cache:
-        raise HTTPException(status_code=503, detail="Models not loaded. Please retry in a moment.")
+        detail = (
+            f"Models still loading. Please retry in a moment. "
+            f"{'Error: ' + _loading_error if _loading_error else 'Loading in progress...'}"
+        )
+        raise HTTPException(status_code=503, detail=detail)
 
     try:
         print(f"[predict] lat={req.lat}, lon={req.lon}, area={req.area}, slug={req.selected_neighborhood_slug}")
 
-        # ── 1. Live USD rate ───────────────────────────────────────────────────
+        # 1. Live USD
         live_usd_scraped = scrape_live_usd()
 
-        # ── 2. BigQuery: macro row ────────────────────────────────────────────
+        # 2. BigQuery macro row
         bq = get_bq_client()
         macro_row = fetch_latest_macro_row(bq)
-
-        # USD fallback: live scrape → macro_row USD_Free_Market
         live_usd = live_usd_scraped or float(macro_row["USD_Free_Market"])
 
-        # ── 3. Neighborhood selection ─────────────────────────────────────────
-        candidates = get_top_candidate_neighborhoods(req.lat, req.lon, top_k=3)
-        closest_nb = candidates[0]
+        # 3. Neighborhood selection
+        candidates  = get_top_candidate_neighborhoods(req.lat, req.lon, top_k=3)
+        closest_nb  = candidates[0]
 
         if req.selected_neighborhood_slug:
             chosen_slug = req.selected_neighborhood_slug
@@ -715,26 +702,21 @@ async def predict(req: PredictRequest):
             chosen_slug = closest_nb["slug"]
             nb_region   = closest_nb["region_id"]
 
-        # ── 4. Region detection (BigQuery polygon → Haversine fallback) ───────
+        # 4. Region detection
         bq_region = fetch_region_id_from_borders(bq, req.lat, req.lon)
         region_id = bq_region if bq_region is not None else nb_region
 
-        # ── 5. Spatial features ───────────────────────────────────────────────
+        # 5. Spatial features
         spatial = fetch_spatial_features(bq, req.lat, req.lon)
 
-        # ── 6. Neighborhood encoding ──────────────────────────────────────────
+        # 6. Neighborhood encoding
         enc_dict    = _cache["encoding"]
         global_mean = float(enc_dict.get("GLOBAL_MEAN", 1.0))
         nb_encoded  = float(enc_dict.get(chosen_slug, global_mean))
 
-        # ── 7. Macro V2 inference (log-differential math) ─────────────────────
-        #   log(H/USD)_t = log(H/USD)_{t-1} + macro_diff
-        #   base_price_per_sqm = exp(log(H/USD_lag1) + macro_diff) * live_USD
+        # 7. Macro V2 inference — log-differential math
         macro_feat = build_macro_features(macro_row)
-        macro_dm   = xgb.DMatrix(
-            np.array([macro_feat], dtype=float),
-            feature_names=MACRO_COLUMNS,
-        )
+        macro_dm   = xgb.DMatrix(np.array([macro_feat], dtype=float), feature_names=MACRO_COLUMNS)
 
         housing_to_usd_lag1 = float(macro_row["Housing_to_USD_Lag_1"])
         log_anchor          = math.log(housing_to_usd_lag1)
@@ -747,45 +729,36 @@ async def predict(req: PredictRequest):
         base_price_low     = math.exp(log_anchor + macro_diff_q05) * live_usd
         base_price_high    = math.exp(log_anchor + macro_diff_q95) * live_usd
 
-        # ── 8. Micro V2 inference ─────────────────────────────────────────────
+        # 8. Micro V2 inference
         micro_feat = engineer_micro_features(req, spatial, region_id, nb_encoded)
-        micro_dm   = xgb.DMatrix(
-            np.array([micro_feat], dtype=float),
-            feature_names=MICRO_COLUMNS,
-        )
+        micro_dm   = xgb.DMatrix(np.array([micro_feat], dtype=float), feature_names=MICRO_COLUMNS)
         micro_ratio = float(_cache["micro"].predict(micro_dm)[0])
 
-        # ── 9. Final prices ───────────────────────────────────────────────────
+        # 9. Final prices
         final_price_per_sqm = base_price_per_sqm * micro_ratio
         final_total_price   = final_price_per_sqm * req.area
         final_total_low     = base_price_low  * micro_ratio * req.area
         final_total_high    = base_price_high * micro_ratio * req.area
 
-        # ── 10. Structured log ────────────────────────────────────────────────
-        log_payload = {
+        # 10. Structured log
+        print(json.dumps({
             "event": "prediction_v2",
             "lat": req.lat, "lon": req.lon, "area": req.area,
             "region_id": region_id, "neighborhood": chosen_slug,
             "housing_to_usd_lag1": round(housing_to_usd_lag1, 6),
             "live_usd": round(live_usd, 2),
             "macro_diff": round(macro_diff, 6),
-            "macro_diff_q05": round(macro_diff_q05, 6),
-            "macro_diff_q95": round(macro_diff_q95, 6),
-            "base_price_per_sqm": round(base_price_per_sqm, 4),
-            "base_price_low": round(base_price_low, 4),
-            "base_price_high": round(base_price_high, 4),
             "micro_ratio": round(micro_ratio, 6),
             "final_total_price": round(final_total_price, 2),
-        }
-        print(json.dumps(log_payload, ensure_ascii=False))
+        }, ensure_ascii=False))
 
-        # ── 11. Market Pulse ──────────────────────────────────────────────────
+        # 11. Market Pulse
         inflation_yoy = float(macro_row.get("Inflation_General_YoY_Lag_3", 0.0))
         gpr_index     = float(macro_row.get("Iran_GPR", 0.0))
         gpr_ma3       = float(macro_row.get("Iran_GPR_MA3", 0.0))
         month_jalali  = int(macro_row.get("Month_Jalali", 0))
         year_jalali   = int(macro_row.get("Year_Jalali", 0))
-        region_avg    = housing_to_usd_lag1 * live_usd  # approx region avg from lag ratio
+        region_avg    = housing_to_usd_lag1 * live_usd
 
         return PredictResponse(
             base_price_per_sqm  = round(base_price_per_sqm, 4),
@@ -828,6 +801,8 @@ async def predict(req: PredictRequest):
             ),
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[ERROR]\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
