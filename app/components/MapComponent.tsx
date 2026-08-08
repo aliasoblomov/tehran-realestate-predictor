@@ -21,6 +21,11 @@ export default function MapComponent({
   const markerRef = useRef<any>(null);
   const [address, setAddress] = useState<string | null>(null);
 
+  const onLocationSelectRef = useRef(onLocationSelect);
+  useEffect(() => {
+    onLocationSelectRef.current = onLocationSelect;
+  }, [onLocationSelect]);
+
   const initMap = useCallback(async () => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
@@ -117,15 +122,17 @@ export default function MapComponent({
         .openPopup();
 
       markerRef.current = marker;
-      onLocationSelect(lat, lng);
+      onLocationSelectRef.current(lat, lng);
       setAddress(null);
 
       // ── Drag end: update parent state with new pin position ──
-      marker.on("dragend", async () => {
-        const newPos = marker.getLatLng();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      marker.on("dragend", async (ev: any) => {
+        const targetMarker = ev?.target || marker;
+        const newPos = targetMarker.getLatLng();
         const newLat = newPos.lat;
         const newLng = newPos.lng;
-        onLocationSelect(newLat, newLng);
+        onLocationSelectRef.current(newLat, newLng);
         setAddress(null);
         marker.setPopupContent(
           `<div style="text-align:center; padding: 4px 0; font-family:'Vazirmatn',sans-serif;">

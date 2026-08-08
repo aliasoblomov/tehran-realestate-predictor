@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Navbar from "./components/Navbar";
 import PredictionForm, { FormValues } from "./components/PredictionForm";
 import ResultCard, { PredictionResult } from "./components/ResultCard";
@@ -49,6 +49,7 @@ export default function Home() {
     lat: number;
     lon: number;
   } | null>(null);
+  const selectedLocationRef = useRef<{ lat: number; lon: number } | null>(null);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,14 +83,17 @@ export default function Home() {
   }, []);
 
   const handleLocationSelect = useCallback((lat: number, lon: number) => {
-    setSelectedLocation({ lat, lon });
+    const loc = { lat, lon };
+    setSelectedLocation(loc);
+    selectedLocationRef.current = loc;
     setResult(null);
     setError(null);
   }, []);
 
   const handleSubmit = useCallback(
     async (values: FormValues, overrideSlug?: string) => {
-      if (!selectedLocation) return;
+      const loc = selectedLocationRef.current || selectedLocation;
+      if (!loc) return;
 
       setLastFormValues(values);
       setIsLoading(true);
@@ -97,8 +101,8 @@ export default function Home() {
 
       try {
         const payload: Record<string, unknown> = {
-          lat: selectedLocation.lat,
-          lon: selectedLocation.lon,
+          lat: loc.lat,
+          lon: loc.lon,
           area: values.area,
           building_age: values.building_age,
           total_floors: values.total_floors,

@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, List
 
 import numpy as np
+import pandas as pd
 import xgboost as xgb
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -207,39 +208,60 @@ MACRO_COLUMNS = [
     "Construction_Cost_Real", "Month_Sin", "Month_Cos",
 ]
 
-MICRO_COLUMNS = [
-    "has_elevator", "has_parking", "is_price_converted", "is_villa",
-    "land_size", "building_size", "rooms_count", "building_age",
-    "location_latitude", "location_longitude", "location_radius",
-    "commercial_density", "dist_to_metro", "dist_to_cbd", "dist_to_highway",
-    "seismic_risk_level", "air_quality_aqi", "traffic_zone_status",
-    "urban_decay_class", "floor_elevator_penalty", "bonus_tod_livability",
-    "penalty_traffic_nuisance", "suburban_metro_dependency", "highway_sweetspot",
-    "region_id", "floor_num", "total_floors_num", "unit_per_floor_num",
+MICRO_FEATURE_NAMES = [
+    "has_elevator",
+    "has_parking",
+    "is_price_converted",
+    "is_villa",
+    "land_size",
+    "building_size",
+    "rooms_count",
+    "building_age",
+    "location_latitude",
+    "location_longitude",
+    "location_radius",
+    "commercial_density",
+    "dist_to_metro",
+    "dist_to_cbd",
+    "dist_to_highway",
+    "seismic_risk_level",
+    "air_quality_aqi",
+    "traffic_zone_status",
+    "urban_decay_class",
+    "floor_elevator_penalty",
+    "bonus_tod_livability",
+    "penalty_traffic_nuisance",
+    "suburban_metro_dependency",
+    "highway_sweetspot",
+    "region_id",
+    "floor_num",
+    "total_floors_num",
+    "unit_per_floor_num",
     "neighborhood_encoded",
 ]
+MICRO_COLUMNS = MICRO_FEATURE_NAMES
 
 
 # ─── HELPERS ────────────────────────────────────────────────────────────────────
-def normalize_slug(raw: str) -> str:
+def normalize_slug(slug: str) -> str:
     """
     Convert any incoming neighborhood slug variant to canonical lowercase kebab-case.
+    - Strip whitespace
+    - Convert to lowercase
+    - Replace all internal spaces and underscores with hyphens
+    - Collapse multiple hyphens into one and strip hyphens from ends
     Examples:
-      'Shahrak e Jandarmeri'  -> 'shahrak-e-jandarmeri'
-      'shahrak_e_jandarmeri'  -> 'shahrak-e-jandarmeri'
-      'EIVANAK'               -> 'eivanak'
-      'saadat abad'           -> 'saadat-abad'
+      ' Shahrak e Jandarmeri ' -> 'shahrak-e-jandarmeri'
+      'shahrak_e_jandarmeri'   -> 'shahrak-e-jandarmeri'
+      'Eivanak'                -> 'eivanak'
+      'saadat abad'            -> 'saadat-abad'
     """
-    if not raw:
+    if not slug:
         return ""
-    s = raw.strip().lower()
-    # Replace underscores, multiple spaces, and unicode non-breaking spaces with a single hyphen
-    s = re.sub(r'[_\s\u00a0]+', '-', s)
-    # Collapse multiple hyphens into one
+    s = str(slug).strip().lower()
+    s = re.sub(r'[\s_]+', '-', s)
     s = re.sub(r'-+', '-', s)
-    # Strip leading/trailing hyphens
-    s = s.strip('-')
-    return s
+    return s.strip('-')
 
 
 def haversine_distance_km(lat1, lon1, lat2, lon2):
@@ -530,45 +552,72 @@ def build_macro_features(row: dict) -> list:
     ]
 
 
-def engineer_micro_features(req, spatial: dict, region_id: int, neighborhood_encoded: float) -> list:
-    floor_elevator_penalty    = req.floor_num * (1 - int(req.has_elevator))
-    bonus_tod_livability      = max(0.0, 1.0 - spatial["dist_to_metro"] / 1500.0)
-    penalty_traffic_nuisance  = float(spatial["traffic_zone_status"])
-    suburban_flag             = 1.0 if spatial["dist_to_cbd"] > 12000 else 0.0
-    suburban_metro_dependency = (spatial["dist_to_metro"] / 1000.0) * suburban_flag
-    highway_sweetspot         = 1 if 200 <= spatial["dist_to_highway"] <= 900 else 0
+def engineer_micro_features_dict(req, spatial: dict, region_id: int, neighborhood_encoded: float) -> dict:
+    has_elevator = int(bool(getattr(req, "has_elevator", True)))
+    has_parking  = int(bool(getattr(req, "has_parking", True)))
+    is_villa     = int(bool(getattr(req, "is_villa", False)))
+    area         = float(getattr(req, "area", 100.0))
+    floor_num    = int(getattr(req, "floor_num", 2))
+    total_floors = int(getattr(req, "total_floors", 6))
+    unit_per_flr = int(getattr(req, "unit_per_floor", 2))
+    rooms_count  = int(getattr(req, "rooms_count", 2))
+    building_age = int(getattr(req, "building_age", 10))
+    lat          = float(getattr(req, "lat", 35.6961))
+    lon          = float(getattr(req, "lon", 51.4183))
 
-    return [
-        int(req.has_elevator),
-        int(req.has_parking),
-        0,                             # is_price_converted
-        int(req.is_villa),
-        float(req.area),               # land_size
-        float(req.area),               # building_size
-        float(req.rooms_count),
-        float(req.building_age),
-        float(req.lat),                # location_latitude
-        float(req.lon),                # location_longitude
-        0.0,                           # location_radius
-        float(spatial["commercial_density"]),
-        float(spatial["dist_to_metro"]),
-        float(spatial["dist_to_cbd"]),
-        float(spatial["dist_to_highway"]),
-        float(spatial["seismic_risk_level"]),
-        float(spatial["air_quality_aqi"]),
-        float(spatial["traffic_zone_status"]),
-        float(spatial["urban_decay_class"]),
-        float(floor_elevator_penalty),
-        float(bonus_tod_livability),
-        float(penalty_traffic_nuisance),
-        float(suburban_metro_dependency),
-        float(highway_sweetspot),
-        float(region_id),
-        float(req.floor_num),
-        float(req.total_floors),       # total_floors_num
-        float(req.unit_per_floor),     # unit_per_floor_num
-        float(neighborhood_encoded),
-    ]
+    dist_to_metro   = float(spatial.get("dist_to_metro", FALLBACK_DIST_MAX))
+    dist_to_highway = float(spatial.get("dist_to_highway", FALLBACK_DIST_MAX))
+    dist_to_cbd     = float(spatial.get("dist_to_cbd", 10000.0))
+    comm_density    = float(spatial.get("commercial_density", FALLBACK_COMM_DENSITY))
+    urban_decay     = int(spatial.get("urban_decay_class", FALLBACK_URBAN_DECAY))
+    air_quality     = float(spatial.get("air_quality_aqi", FALLBACK_AIR_QUALITY))
+    traffic_zone    = int(spatial.get("traffic_zone_status", FALLBACK_TRAFFIC_ZONE))
+    seismic_risk    = int(spatial.get("seismic_risk_level", FALLBACK_SEISMIC_RISK))
+
+    floor_elevator_penalty    = floor_num * (1 - has_elevator)
+    bonus_tod_livability      = max(0.0, 1.0 - dist_to_metro / 1500.0)
+    penalty_traffic_nuisance  = float(traffic_zone)
+    suburban_flag             = 1.0 if dist_to_cbd > 12000.0 else 0.0
+    suburban_metro_dependency = (dist_to_metro / 1000.0) * suburban_flag
+    highway_sweetspot         = 1.0 if 200.0 <= dist_to_highway <= 900.0 else 0.0
+
+    return {
+        "has_elevator":              has_elevator,
+        "has_parking":               has_parking,
+        "is_price_converted":        0,  # 0 for sale
+        "is_villa":                  is_villa,
+        "land_size":                 0.0,  # logical default: 0 for apartments/units
+        "building_size":             area,
+        "rooms_count":               rooms_count,
+        "building_age":              building_age,
+        "location_latitude":         lat,
+        "location_longitude":        lon,
+        "location_radius":           0.0,
+        "commercial_density":        comm_density,
+        "dist_to_metro":             dist_to_metro,
+        "dist_to_cbd":               dist_to_cbd,
+        "dist_to_highway":           dist_to_highway,
+        "seismic_risk_level":        seismic_risk,
+        "air_quality_aqi":           air_quality,
+        "traffic_zone_status":       traffic_zone,
+        "urban_decay_class":         urban_decay,
+        "floor_elevator_penalty":    int(floor_elevator_penalty),
+        "bonus_tod_livability":      float(bonus_tod_livability),
+        "penalty_traffic_nuisance":  float(penalty_traffic_nuisance),
+        "suburban_metro_dependency": float(suburban_metro_dependency),
+        "highway_sweetspot":         float(highway_sweetspot),
+        "region_id":                 int(region_id),
+        "floor_num":                 floor_num,
+        "total_floors_num":          total_floors,
+        "unit_per_floor_num":        unit_per_flr,
+        "neighborhood_encoded":      float(neighborhood_encoded),
+    }
+
+
+def engineer_micro_features(req, spatial: dict, region_id: int, neighborhood_encoded: float) -> list:
+    """Legacy array-based feature generator kept for backward compatibility."""
+    d = engineer_micro_features_dict(req, spatial, region_id, neighborhood_encoded)
+    return [d[k] for k in MICRO_FEATURE_NAMES]
 
 
 def scrape_live_usd() -> Optional[float]:
@@ -619,11 +668,22 @@ async def lifespan(app: FastAPI):
             enc = json.load(f)
         print("[startup] neighborhood_encoding_v2.json loaded ✓")
 
-        _cache["macro"]     = macro
-        _cache["macro_q05"] = macro_q05
-        _cache["macro_q95"] = macro_q95
-        _cache["micro"]     = micro
-        _cache["encoding"]  = enc
+        global_mean = float(enc.get("GLOBAL_MEAN", 0.8512489971975457))
+        district_means = {}
+        for rid in range(1, 23):
+            r_slugs = [item["slug"] for item in NEIGHBORHOODS_DATA if item["region_id"] == rid]
+            vals = [enc[s] for s in r_slugs if s in enc]
+            if vals:
+                district_means[rid] = sum(vals) / len(vals)
+            else:
+                district_means[rid] = global_mean
+
+        _cache["macro"]          = macro
+        _cache["macro_q05"]      = macro_q05
+        _cache["macro_q95"]      = macro_q95
+        _cache["micro"]          = micro
+        _cache["encoding"]       = enc
+        _cache["district_means"] = district_means
         print("[startup] ✅ All V2 models loaded successfully. Ready for predictions.")
     except Exception as e:
         print(f"[startup] ❌ Fatal error loading models: {e}")
@@ -679,20 +739,24 @@ class SpatialFeatures(BaseModel):
 
 
 def fetch_neighborhood_avg_ratio(client, region_id: int, neighborhood_slug: str) -> float:
+    normalized_slug = normalize_slug(neighborhood_slug)
     query = f"""
         SELECT 
           ROUND(AVG(target_ratio), 3) AS avg_quality_ratio
-        FROM `siavak-temp-aliz.divar_ml_data_prepration.ml_final_micro_training_data`  
-        WHERE region_id = {region_id} AND neighborhood_slug = '{neighborhood_slug}'
+        FROM `siavak-temp-aliz.divar_ml_data_prepration.ml_final_micro_training_data`
+        WHERE region_id = {region_id} AND neighborhood_slug = '{normalized_slug}'
     """
+    print(f"[fetch_neighborhood_avg_ratio] Executing query: SELECT ROUND(AVG(target_ratio), 3) AS avg_quality_ratio FROM siavak-temp-aliz.divar_ml_data_prepration.ml_final_micro_training_data WHERE region_id = {region_id} AND neighborhood_slug = '{normalized_slug}'")
     try:
         rows = list(client.query(query).result())
         if rows and rows[0]["avg_quality_ratio"] is not None:
             val = float(rows[0]["avg_quality_ratio"])
-            print(f"[fetch_neighborhood_avg_ratio] region={region_id}, slug={neighborhood_slug} -> {val}")
+            print(f"[fetch_neighborhood_avg_ratio] SUCCESS: region={region_id}, slug='{normalized_slug}' -> avg_quality_ratio={val}")
             return val
+        else:
+            print(f"[fetch_neighborhood_avg_ratio] No rows or NULL ratio for region={region_id}, slug='{normalized_slug}', fallback to 1.0")
     except Exception as e:
-        print(f"[fetch_neighborhood_avg_ratio_error] {e}")
+        print(f"[fetch_neighborhood_avg_ratio_error] Query execution failed: {e}")
     return 1.0
 
 
@@ -734,6 +798,7 @@ class PredictResponse(BaseModel):
     macro_diff_q95: float
     housing_to_usd_lag1: float
     neighborhood_avg_price: float
+    neighborhood_average_price: float
     spatial: SpatialFeatures
     candidate_neighborhoods: List[CandidateNeighborhood]
     market_pulse: MarketPulse
@@ -816,7 +881,6 @@ async def predict(req: PredictRequest):
             chosen_slug = normalize_slug(raw_slug)
             matched     = next(
                 (x for x in NEIGHBORHOODS_DATA if x["slug"] == chosen_slug),
-                # fallback: try original raw slug
                 next((x for x in NEIGHBORHOODS_DATA if x["slug"] == raw_slug), None)
             )
             nb_region   = matched["region_id"] if matched else closest_nb["region_id"]
@@ -824,9 +888,8 @@ async def predict(req: PredictRequest):
             chosen_slug = closest_nb["slug"]
             nb_region   = closest_nb["region_id"]
 
-        # normalize the final chosen slug (handles closest_nb slugs that may already be canonical)
         chosen_slug = normalize_slug(chosen_slug)
-        print(f"[predict] chosen_slug (normalized)={chosen_slug}, nb_region={nb_region}")
+        print(f"[predict] chosen_slug (normalized)='{chosen_slug}', nb_region={nb_region}")
 
         # 4. Region detection
         bq_region = fetch_region_id_from_borders(bq, req.lat, req.lon)
@@ -836,25 +899,19 @@ async def predict(req: PredictRequest):
         spatial = fetch_spatial_features(bq, req.lat, req.lon)
 
         # 6. Neighborhood encoding — normalize slug, try district fallback, then global mean
-        enc_dict    = _cache["encoding"]
-        global_mean = float(enc_dict.get("GLOBAL_MEAN", 1.0))
+        enc_dict       = _cache["encoding"]
+        district_means = _cache.get("district_means", {})
+        global_mean    = float(enc_dict.get("GLOBAL_MEAN", 0.8512489971975457))
 
         if chosen_slug in enc_dict:
             nb_encoded = float(enc_dict[chosen_slug])
-            print(f"[encoding] HIT: {chosen_slug} -> {nb_encoded:.6f}")
+            print(f"[encoding] HIT: '{chosen_slug}' -> {nb_encoded:.6f}")
+        elif region_id in district_means:
+            nb_encoded = float(district_means[region_id])
+            print(f"[encoding] MISS '{chosen_slug}' -> fallback to district {region_id} mean -> {nb_encoded:.6f}")
         else:
-            # Try district-level fallback key (format: district-mean-{region_id})
-            district_key = f"district-mean-{region_id}"
-            alt_district_key = f"shahrak-naft-district{region_id}"  # known pattern in JSON
-            if district_key in enc_dict:
-                nb_encoded = float(enc_dict[district_key])
-                print(f"[encoding] MISS '{chosen_slug}' -> district fallback '{district_key}' -> {nb_encoded:.6f}")
-            elif alt_district_key in enc_dict:
-                nb_encoded = float(enc_dict[alt_district_key])
-                print(f"[encoding] MISS '{chosen_slug}' -> district fallback '{alt_district_key}' -> {nb_encoded:.6f}")
-            else:
-                nb_encoded = global_mean
-                print(f"[encoding] MISS '{chosen_slug}' -> global_mean fallback -> {nb_encoded:.6f}")
+            nb_encoded = global_mean
+            print(f"[encoding] MISS '{chosen_slug}' -> fallback to global mean -> {nb_encoded:.6f}")
 
         # 7. Macro V2 inference — log-differential math
         macro_feat = build_macro_features(macro_row)
@@ -874,9 +931,10 @@ async def predict(req: PredictRequest):
         base_price_low     = math.exp(log_anchor + macro_diff_q05) * live_usd
         base_price_high    = math.exp(log_anchor + macro_diff_q95) * live_usd
 
-        # 8. Micro V2 inference
-        micro_feat = engineer_micro_features(req, spatial, region_id, nb_encoded)
-        micro_dm   = xgb.DMatrix(np.array([micro_feat], dtype=float), feature_names=MICRO_COLUMNS)
+        # 8. Micro V2 inference using strict Pandas DataFrame mapping
+        micro_feat_dict = engineer_micro_features_dict(req, spatial, region_id, nb_encoded)
+        micro_df = pd.DataFrame([micro_feat_dict])[MICRO_FEATURE_NAMES]
+        micro_dm = xgb.DMatrix(micro_df)
         micro_ratio = float(_cache["micro"].predict(micro_dm)[0])
 
         # 9. Final prices
@@ -898,14 +956,12 @@ async def predict(req: PredictRequest):
         }, ensure_ascii=False))
 
         # 11. Historical Neighborhood Average Quality Ratio from BigQuery
-        # chosen_slug is already normalized; passes clean kebab-case slug to BQ query
         avg_quality_ratio = fetch_neighborhood_avg_ratio(bq, region_id, chosen_slug)
-        neighborhood_avg_price = base_price_per_sqm * avg_quality_ratio
-        print(f"[neighborhood_avg] region={region_id} slug={chosen_slug} avg_ratio={avg_quality_ratio:.4f} -> price={neighborhood_avg_price:.4f} M Toman/m²")
+        neighborhood_average_price = base_price_per_sqm * avg_quality_ratio
+        print(f"[neighborhood_average_price] region={region_id} slug='{chosen_slug}' base_price={base_price_per_sqm:.4f} * avg_ratio={avg_quality_ratio:.4f} -> {neighborhood_average_price:.4f} M Toman/m²")
 
         # 12. Market Pulse
         raw_inflation = float(get_val(macro_row, "Inflation_General_YoY_Lag_3", "inflation_general_yoy_lag_3", default=0.40))
-        # Inflation bug fix: If raw value is e.g. 69.27, it's already a percentage. Do not multiply by 100.
         inflation_yoy = raw_inflation if raw_inflation > 2.0 else raw_inflation * 100.0
 
         gpr_index     = float(get_val(macro_row, "Iran_GPR", "iran_gpr", default=100.0))
@@ -915,26 +971,27 @@ async def predict(req: PredictRequest):
         region_avg    = base_price_per_sqm
 
         return PredictResponse(
-            base_price_per_sqm  = round(base_price_per_sqm, 4),
-            base_price_low      = round(base_price_low, 4),
-            base_price_high     = round(base_price_high, 4),
-            micro_ratio         = round(micro_ratio, 6),
-            final_price_per_sqm = round(final_price_per_sqm, 4),
-            final_total_price   = round(final_total_price, 2),
-            final_total_low     = round(final_total_low, 2),
-            final_total_high    = round(final_total_high, 2),
-            usd_rate            = round(live_usd, 2),
-            neighborhood        = chosen_slug,
-            neighborhood_name   = chosen_slug.replace("-", " ").title(),
-            region_id           = region_id,
-            year_jalali         = year_jalali,
-            month_jalali        = month_jalali,
-            macro_diff          = round(macro_diff, 6),
-            macro_diff_q05      = round(macro_diff_q05, 6),
-            macro_diff_q95      = round(macro_diff_q95, 6),
-            housing_to_usd_lag1 = round(housing_to_usd_lag1, 6),
-            neighborhood_avg_price = round(neighborhood_avg_price, 4),
-            spatial             = SpatialFeatures(
+            base_price_per_sqm         = round(base_price_per_sqm, 4),
+            base_price_low             = round(base_price_low, 4),
+            base_price_high            = round(base_price_high, 4),
+            micro_ratio                = round(micro_ratio, 6),
+            final_price_per_sqm        = round(final_price_per_sqm, 4),
+            final_total_price          = round(final_total_price, 2),
+            final_total_low            = round(final_total_low, 2),
+            final_total_high           = round(final_total_high, 2),
+            usd_rate                   = round(live_usd, 2),
+            neighborhood               = chosen_slug,
+            neighborhood_name          = chosen_slug.replace("-", " ").title(),
+            region_id                  = region_id,
+            year_jalali                = year_jalali,
+            month_jalali               = month_jalali,
+            macro_diff                 = round(macro_diff, 6),
+            macro_diff_q05             = round(macro_diff_q05, 6),
+            macro_diff_q95             = round(macro_diff_q95, 6),
+            housing_to_usd_lag1        = round(housing_to_usd_lag1, 6),
+            neighborhood_avg_price     = round(neighborhood_average_price, 4),
+            neighborhood_average_price = round(neighborhood_average_price, 4),
+            spatial                    = SpatialFeatures(
                 dist_to_metro_m     = round(spatial["dist_to_metro"], 1),
                 dist_to_cbd_m       = round(spatial["dist_to_cbd"], 1),
                 dist_to_highway_m   = round(spatial["dist_to_highway"], 1),
@@ -948,7 +1005,7 @@ async def predict(req: PredictRequest):
             market_pulse = MarketPulse(
                 usd_toman                  = round(live_usd, 2),
                 region_avg_price_sqm       = round(region_avg, 2),
-                neighborhood_avg_price_sqm = round(neighborhood_avg_price, 2),
+                neighborhood_avg_price_sqm = round(neighborhood_average_price, 2),
                 inflation_yoy              = round(inflation_yoy, 1),
                 gpr_index                  = round(gpr_index, 1),
                 gpr_ma3                    = round(gpr_ma3, 1),
