@@ -106,7 +106,7 @@ export default function MapComponent({
         markerRef.current.remove();
       }
 
-      const marker = L!.marker([lat, lng], { icon: goldIcon })
+      const marker = L!.marker([lat, lng], { icon: goldIcon, draggable: true })
         .addTo(map)
         .bindPopup(
           `<div style="text-align:center; padding: 4px 0; font-family:'Vazirmatn',sans-serif;">
@@ -119,6 +119,39 @@ export default function MapComponent({
       markerRef.current = marker;
       onLocationSelect(lat, lng);
       setAddress(null);
+
+      // ── Drag end: update parent state with new pin position ──
+      marker.on("dragend", async () => {
+        const newPos = marker.getLatLng();
+        const newLat = newPos.lat;
+        const newLng = newPos.lng;
+        onLocationSelect(newLat, newLng);
+        setAddress(null);
+        marker.setPopupContent(
+          `<div style="text-align:center; padding: 4px 0; font-family:'Vazirmatn',sans-serif;">
+            <div style="font-size:0.85rem; font-weight: 700; color:#f97316; margin-top:6px;">در حال دریافت آدرس...</div>
+          </div>`
+        );
+        marker.openPopup();
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${newLat}&lon=${newLng}&format=json&accept-language=fa`);
+          const data = await res.json();
+          let addrStr = "آدرس نامشخص";
+          if (data.address) {
+            const parts: string[] = [];
+            if (data.address.suburb || data.address.neighbourhood) parts.push(data.address.suburb || data.address.neighbourhood);
+            if (data.address.road) parts.push(data.address.road);
+            if (parts.length > 0) addrStr = parts.join("، ");
+            else if (data.display_name) addrStr = data.display_name.split(",").slice(0, 2).join("، ");
+          }
+          setAddress(addrStr);
+          marker.setPopupContent(
+            `<div style="text-align:center; padding: 6px 4px; font-family:'Vazirmatn',sans-serif;">
+              <div style="font-weight:700; color:#f97316; font-size:0.85rem;">${addrStr}</div>
+            </div>`
+          );
+        } catch { /* ignore */ }
+      });
 
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fa`);

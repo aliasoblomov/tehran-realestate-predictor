@@ -221,6 +221,27 @@ MICRO_COLUMNS = [
 
 
 # ─── HELPERS ────────────────────────────────────────────────────────────────────
+def normalize_slug(raw: str) -> str:
+    """
+    Convert any incoming neighborhood slug variant to canonical lowercase kebab-case.
+    Examples:
+      'Shahrak e Jandarmeri'  -> 'shahrak-e-jandarmeri'
+      'shahrak_e_jandarmeri'  -> 'shahrak-e-jandarmeri'
+      'EIVANAK'               -> 'eivanak'
+      'saadat abad'           -> 'saadat-abad'
+    """
+    if not raw:
+        return ""
+    s = raw.strip().lower()
+    # Replace underscores, multiple spaces, and unicode non-breaking spaces with a single hyphen
+    s = re.sub(r'[_\s\u00a0]+', '-', s)
+    # Collapse multiple hyphens into one
+    s = re.sub(r'-+', '-', s)
+    # Strip leading/trailing hyphens
+    s = s.strip('-')
+    return s
+
+
 def haversine_distance_km(lat1, lon1, lat2, lon2):
     R = 6371.0
     dlat = math.radians(lat2 - lat1)
@@ -791,12 +812,21 @@ async def predict(req: PredictRequest):
         closest_nb  = candidates[0]
 
         if req.selected_neighborhood_slug:
-            chosen_slug = req.selected_neighborhood_slug
-            matched     = next((x for x in NEIGHBORHOODS_DATA if x["slug"] == chosen_slug), None)
+            raw_slug    = req.selected_neighborhood_slug
+            chosen_slug = normalize_slug(raw_slug)
+            matched     = next(
+                (x for x in NEIGHBORHOODS_DATA if x["slug"] == chosen_slug),
+                # fallback: try original raw slug
+                next((x for x in NEIGHBORHOODS_DATA if x["slug"] == raw_slug), None)
+            )
             nb_region   = matched["region_id"] if matched else closest_nb["region_id"]
         else:
             chosen_slug = closest_nb["slug"]
             nb_region   = closest_nb["region_id"]
+
+        # normalize the final chosen slug (handles closest_nb slugs that may already be canonical)
+        chosen_slug = normalize_slug(chosen_slug)
+        print(f"[predict] chosen_slug (normalized)={chosen_slug}, nb_region={nb_region}")
 
         # 4. Region detection
         bq_region = fetch_region_id_from_borders(bq, req.lat, req.lon)
@@ -805,10 +835,26 @@ async def predict(req: PredictRequest):
         # 5. Spatial features
         spatial = fetch_spatial_features(bq, req.lat, req.lon)
 
-        # 6. Neighborhood encoding
+        # 6. Neighborhood encoding — normalize slug, try district fallback, then global mean
         enc_dict    = _cache["encoding"]
         global_mean = float(enc_dict.get("GLOBAL_MEAN", 1.0))
-        nb_encoded  = float(enc_dict.get(chosen_slug, global_mean))
+
+        if chosen_slug in enc_dict:
+            nb_encoded = float(enc_dict[chosen_slug])
+            print(f"[encoding] HIT: {chosen_slug} -> {nb_encoded:.6f}")
+        else:
+            # Try district-level fallback key (format: district-mean-{region_id})
+            district_key = f"district-mean-{region_id}"
+            alt_district_key = f"shahrak-naft-district{region_id}"  # known pattern in JSON
+            if district_key in enc_dict:
+                nb_encoded = float(enc_dict[district_key])
+                print(f"[encoding] MISS '{chosen_slug}' -> district fallback '{district_key}' -> {nb_encoded:.6f}")
+            elif alt_district_key in enc_dict:
+                nb_encoded = float(enc_dict[alt_district_key])
+                print(f"[encoding] MISS '{chosen_slug}' -> district fallback '{alt_district_key}' -> {nb_encoded:.6f}")
+            else:
+                nb_encoded = global_mean
+                print(f"[encoding] MISS '{chosen_slug}' -> global_mean fallback -> {nb_encoded:.6f}")
 
         # 7. Macro V2 inference — log-differential math
         macro_feat = build_macro_features(macro_row)
@@ -852,8 +898,10 @@ async def predict(req: PredictRequest):
         }, ensure_ascii=False))
 
         # 11. Historical Neighborhood Average Quality Ratio from BigQuery
+        # chosen_slug is already normalized; passes clean kebab-case slug to BQ query
         avg_quality_ratio = fetch_neighborhood_avg_ratio(bq, region_id, chosen_slug)
         neighborhood_avg_price = base_price_per_sqm * avg_quality_ratio
+        print(f"[neighborhood_avg] region={region_id} slug={chosen_slug} avg_ratio={avg_quality_ratio:.4f} -> price={neighborhood_avg_price:.4f} M Toman/m²")
 
         # 12. Market Pulse
         raw_inflation = float(get_val(macro_row, "Inflation_General_YoY_Lag_3", "inflation_general_yoy_lag_3", default=0.40))
