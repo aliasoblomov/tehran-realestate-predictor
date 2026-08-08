@@ -15,7 +15,40 @@ import {
   Wind,
   Navigation,
   Train,
+  Building,
 } from "lucide-react";
+
+// ─── Utility: Persian Digits & Currency Formatters ────────────────────────────
+export function toPersianDigits(n: number | string): string {
+  if (n === null || n === undefined) return "";
+  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+  return String(n).replace(/\d/g, (d) => persianDigits[parseInt(d, 10)]);
+}
+
+export function formatPersianCurrency(millionTomans: number): string {
+  if (!millionTomans || isNaN(millionTomans)) return "۰ تومان";
+  if (millionTomans >= 1000) {
+    const billion = (millionTomans / 1000).toFixed(2);
+    return `${toPersianDigits(billion)} میلیارد تومان`;
+  }
+  const formatted = (millionTomans >= 10 ? millionTomans.toFixed(1) : millionTomans.toFixed(2));
+  return `${toPersianDigits(formatted)} میلیون تومان`;
+}
+
+export function formatPersianCurrencyPerSqm(millionTomans: number): string {
+  if (!millionTomans || isNaN(millionTomans)) return "۰ تومان بر مترمربع";
+  if (millionTomans >= 1000) {
+    const billion = (millionTomans / 1000).toFixed(2);
+    return `${toPersianDigits(billion)} میلیارد تومان بر مترمربع`;
+  }
+  const formatted = (millionTomans >= 10 ? millionTomans.toFixed(1) : millionTomans.toFixed(2));
+  return `${toPersianDigits(formatted)} میلیون تومان بر مترمربع`;
+}
+
+export function formatTomanFull(millionTomans: number): string {
+  const tomans = Math.round(millionTomans * 1_000_000);
+  return toPersianDigits(tomans.toLocaleString("fa-IR")) + " تومان";
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface CandidateNeighborhood {
@@ -80,28 +113,55 @@ interface ResultCardProps {
   debugMode?: boolean;
 }
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
-function fmt(n: number, decimals = 2): string {
-  if (!n || isNaN(n)) return "0";
-  return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-
-function fmtM(n: number): string {
-  return fmt(n, n >= 100 ? 0 : n >= 10 ? 1 : 2);
-}
-
-function fmtToman(millionTomans: number): string {
-  const t = Math.round(millionTomans * 1_000_000);
-  return t.toLocaleString("fa-IR");
-}
-
-// ─── Tooltip ──────────────────────────────────────────────────────────────────
+// ─── Modern Overlay Tooltip ───────────────────────────────────────────────────
 function Tooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
   return (
-    <div className="tooltip-wrapper" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <span className="tooltip-icon">ⓘ</span>
-      {show && <div className="tooltip-content">{text}</div>}
+    <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "15px",
+          height: "15px",
+          borderRadius: "50%",
+          background: "rgba(245,158,11,0.12)",
+          border: "1px solid rgba(245,158,11,0.3)",
+          color: "#f59e0b",
+          fontSize: "0.62rem",
+          fontWeight: 800,
+          cursor: "pointer",
+          marginRight: "4px",
+          flexShrink: 0,
+          lineHeight: 1,
+        }}
+      >
+        ⓘ
+      </span>
+      {show && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 8px)",
+            right: 0,
+            background: "#161b27",
+            border: "1.5px solid rgba(245, 158, 11, 0.35)",
+            borderRadius: "12px",
+            padding: "10px 14px",
+            fontSize: "0.72rem",
+            color: "#edf2f7",
+            lineHeight: "1.6",
+            width: "230px",
+            zIndex: 999,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.65)",
+            pointerEvents: "none",
+            animation: "fadeUp 0.2s cubic-bezier(0.4,0,0.2,1) both",
+          }}
+        >
+          {text}
+        </div>
+      )}
     </div>
   );
 }
@@ -109,22 +169,25 @@ function Tooltip({ text }: { text: string }) {
 // ─── AQI Grade Badge ──────────────────────────────────────────────────────────
 function AQIBadge({ aqi }: { aqi: number }) {
   const grade =
-    aqi <= 50  ? { label: "پاک", color: "#22c55e", bg: "rgba(34,197,94,0.1)",   border: "rgba(34,197,94,0.3)" } :
-    aqi <= 100 ? { label: "قابل قبول", color: "#f59e0b", bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)" } :
-    aqi <= 150 ? { label: "ناسالم برای حساس‌ها", color: "#f97316", bg: "rgba(249,115,22,0.1)", border: "rgba(249,115,22,0.3)" } :
-                 { label: "ناسالم", color: "#f43f5e", bg: "rgba(244,63,94,0.1)", border: "rgba(244,63,94,0.3)" };
+    aqi <= 50  ? { label: "پاک", color: "#22c55e", bg: "rgba(34,197,94,0.12)",   border: "rgba(34,197,94,0.35)" } :
+    aqi <= 100 ? { label: "قابل قبول", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.35)" } :
+    aqi <= 150 ? { label: "ناسالم برای حساس‌ها", color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.35)" } :
+                 { label: "ناسالم", color: "#f43f5e", bg: "rgba(244,63,94,0.12)", border: "rgba(244,63,94,0.35)" };
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
       <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#edf2f7", direction: "ltr" }}>
-        {Math.round(aqi)}
+        {toPersianDigits(Math.round(aqi))}
       </span>
       <span
-        className="aqi-grade"
         style={{
           background: grade.bg,
           border: `1px solid ${grade.border}`,
           color: grade.color,
+          padding: "3px 10px",
+          borderRadius: "100px",
+          fontSize: "0.68rem",
+          fontWeight: 800,
         }}
       >
         {grade.label}
@@ -145,16 +208,18 @@ function SeismicScale({ level }: { level: number }) {
         {[1, 2, 3, 4].map((dot) => (
           <div
             key={dot}
-            className="seismic-dot"
             style={{
+              width: "10px",
+              height: "10px",
+              borderRadius: "3px",
               background: dot <= clampedLevel ? colors[clampedLevel - 1] : "rgba(255,255,255,0.08)",
-              border: dot <= clampedLevel ? `1px solid ${colors[clampedLevel - 1]}66` : "1px solid rgba(255,255,255,0.06)",
+              border: dot <= clampedLevel ? `1px solid ${colors[clampedLevel - 1]}` : "1px solid rgba(255,255,255,0.06)",
             }}
           />
         ))}
       </div>
-      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: colors[clampedLevel - 1] }}>
-        {labels[clampedLevel - 1]} ({clampedLevel}/۴)
+      <span style={{ fontSize: "0.72rem", fontWeight: 800, color: colors[clampedLevel - 1] }}>
+        {labels[clampedLevel - 1]} ({toPersianDigits(clampedLevel)}/۴)
       </span>
     </div>
   );
@@ -167,15 +232,27 @@ function DistanceBadge({
   meters: number; sweetSpotMin: number; sweetSpotMax: number; label: string;
 }) {
   const isSweetSpot = meters >= sweetSpotMin && meters <= sweetSpotMax;
-  const distKm = meters >= 1000 ? `${(meters / 1000).toFixed(1)} کم‌تر از كيلومتر` : `${Math.round(meters)} متر`;
+  const distText = meters >= 1000
+    ? `${toPersianDigits((meters / 1000).toFixed(1))} کیلومتر`
+    : `${toPersianDigits(Math.round(meters))} متر`;
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#edf2f7", direction: "ltr" }}>
-        {meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`}
+      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#edf2f7" }}>
+        {distText}
       </span>
       {isSweetSpot && (
-        <span className="sweet-spot-badge">
+        <span
+          style={{
+            background: "rgba(45, 212, 191, 0.12)",
+            border: "1px solid rgba(45, 212, 191, 0.35)",
+            color: "#2dd4bf",
+            borderRadius: "100px",
+            padding: "2px 9px",
+            fontSize: "0.62rem",
+            fontWeight: 800,
+          }}
+        >
           ✦ نقطه طلایی {label}
         </span>
       )}
@@ -183,59 +260,92 @@ function DistanceBadge({
   );
 }
 
-// ─── GPR Sparkline ────────────────────────────────────────────────────────────
-function GPRSparkline({ current, ma3 }: { current: number; ma3: number }) {
-  // Approximate 3-month mini-sparkline: [ma3, lerp, current]
-  const pts = [ma3, (ma3 + current) / 2, current];
-  const minV = Math.min(...pts) * 0.98;
-  const maxV = Math.max(...pts) * 1.02;
-  const norm = (v: number) => ((v - minV) / (maxV - minV)) * 20;
-  const d = `M 0,${20 - norm(pts[0])} L 12,${20 - norm(pts[1])} L 24,${20 - norm(pts[2])}`;
-  const rising = current > ma3 + 2;
-  const easing = current < ma3 - 2;
-  const strokeColor = rising ? "#f43f5e" : easing ? "#22c55e" : "#f59e0b";
+// ─── Confidence Range Bar (Redesigned) ────────────────────────────────────────
+function ConfidenceBar({ low, mid, high }: { low: number; mid: number; high: number }) {
+  if (!low || !high || low >= high) return null;
+  const range = high - low;
+  const midPct = ((mid - low) / range) * 100;
 
   return (
-    <svg width="28" height="24" viewBox="0 0 24 24" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
-      <path d={d} stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="24" cy={20 - norm(pts[2])} r="2.5" fill={strokeColor} />
-    </svg>
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "12px" }}>
+      {/* Min and Max easy-to-read numbers */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>حداقل (Q05)</span>
+          <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#9ab0c7" }}>
+            {formatPersianCurrency(low)}
+          </span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>حداکثر (Q95)</span>
+          <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#9ab0c7" }}>
+            {formatPersianCurrency(high)}
+          </span>
+        </div>
+      </div>
+
+      {/* Bold gradient bar */}
+      <div
+        style={{
+          height: "8px",
+          borderRadius: "100px",
+          background: "rgba(255,255,255,0.06)",
+          position: "relative",
+          overflow: "visible",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute", left: 0, right: 0, top: 0, height: "100%",
+            borderRadius: "100px",
+            background: "linear-gradient(90deg, rgba(249,115,22,0.18), rgba(245,158,11,0.6), rgba(249,115,22,0.18))",
+          }}
+        />
+        {/* Median pin */}
+        <div
+          style={{
+            position: "absolute",
+            left: `${midPct}%`,
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "16px", height: "16px",
+            borderRadius: "50%",
+            background: "#f97316",
+            border: "3px solid #fff",
+            boxShadow: "0 0 12px rgba(249,115,22,0.8)",
+            zIndex: 1,
+          }}
+        />
+      </div>
+
+      {/* Explicit confidence statement */}
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: "0.75rem",
+          fontWeight: 800,
+          color: "#f59e0b",
+          marginTop: "4px",
+        }}
+      >
+        با احتمال ۹۵٪ قیمت واقعی در این بازه قرار دارد
+      </div>
+    </div>
   );
 }
 
-// ─── GPR Risk Label ───────────────────────────────────────────────────────────
-function GPRLabel({ gpr }: { gpr: number }) {
-  const tier =
-    gpr < 80   ? { label: "پایین",   color: "#22c55e", bg: "rgba(34,197,94,0.1)",   border: "rgba(34,197,94,0.25)" } :
-    gpr < 120  ? { label: "متوسط",   color: "#f59e0b", bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.25)" } :
-    gpr < 180  ? { label: "بالا",    color: "#f97316", bg: "rgba(249,115,22,0.1)",  border: "rgba(249,115,22,0.25)" } :
-                 { label: "بحرانی",  color: "#f43f5e", bg: "rgba(244,63,94,0.1)",   border: "rgba(244,63,94,0.25)" };
+// ─── Market Pulse Widget (Redesigned) ─────────────────────────────────────────
+function MarketPulseWidget({ pulse, basePrice, finalPrice }: {
+  pulse: MarketPulse; basePrice: number; finalPrice: number;
+}) {
+  // Inflation bug fix: DO NOT multiply by 100. Check if raw DB value is e.g. 69.27
+  const safeInflation = pulse.inflation_yoy > 500 ? pulse.inflation_yoy / 100 : pulse.inflation_yoy;
+  const inflColor = safeInflation > 50 ? "#f43f5e" : safeInflation > 30 ? "#f97316" : safeInflation > 15 ? "#f59e0b" : "#22c55e";
 
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "2px 10px",
-        borderRadius: "100px",
-        fontSize: "0.65rem",
-        fontWeight: 800,
-        background: tier.bg,
-        border: `1px solid ${tier.border}`,
-        color: tier.color,
-      }}
-    >
-      {tier.label}
-    </span>
-  );
-}
-
-// ─── Market Pulse Widget ──────────────────────────────────────────────────────
-function MarketPulseWidget({ pulse }: { pulse: MarketPulse }) {
-  const inflColor =
-    pulse.inflation_yoy > 50 ? "#f43f5e" :
-    pulse.inflation_yoy > 30 ? "#f97316" :
-    pulse.inflation_yoy > 15 ? "#f59e0b" : "#22c55e";
+  // GPR Trend logic: compare index vs ma3
+  const gprDelta = pulse.gpr_index - pulse.gpr_ma3;
+  const gprTrendText = gprDelta > 2 ? "افزایش نسبت به ماه قبل" : gprDelta < -2 ? "کاهش نسبت به ماه قبل" : "بدون تغییر نسبت به ماه قبل";
+  const gprTrendColor = gprDelta > 2 ? "#f43f5e" : gprDelta < -2 ? "#22c55e" : "#546e8a";
 
   return (
     <div
@@ -248,60 +358,66 @@ function MarketPulseWidget({ pulse }: { pulse: MarketPulse }) {
       }}
     >
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px" }}>
-        <div className="live-dot" />
-        <Activity size={13} color="#f59e0b" />
-        <span style={{ fontSize: "0.65rem", fontWeight: 800, color: "#546e8a", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          نبض بازار · {pulse.year_jalali}/{pulse.month_jalali}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+        <Activity size={14} color="#f59e0b" />
+        <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#edf2f7", letterSpacing: "0.05em" }}>
+          نبض بازار و شاخص‌های کلان · {toPersianDigits(pulse.year_jalali)}/{toPersianDigits(pulse.month_jalali)}
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
-        {/* Region Avg */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
+        {/* District Average */}
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "14px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ fontSize: "0.58rem", color: "#546e8a", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              میانگین منطقه
-            </span>
-            <Tooltip text="قیمت میانگین هر متر مربع در منطقه انتخاب‌شده، محاسبه‌شده از نسبت مسکن به دلار لگ یک ماهه" />
+            <Building size={13} color="#2dd4bf" />
+            <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800 }}>میانگین منطقه (قیمت پایه)</span>
+            <Tooltip text="قیمت میانگین هر مترمربع در کل منطقه، محاسبه‌شده از نسبت مسکن به دلار lag-1." />
           </div>
-          <span style={{ fontSize: "1.05rem", fontWeight: 900, color: "#2dd4bf", direction: "ltr" }}>
-            {fmtM(pulse.region_avg_price_sqm)}M
+          <span style={{ fontSize: "0.95rem", fontWeight: 900, color: "#2dd4bf" }}>
+            {formatPersianCurrencyPerSqm(basePrice)}
           </span>
-          <span style={{ fontSize: "0.6rem", color: "#546e8a" }}>تومان/م²</span>
         </div>
 
-        {/* Inflation */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        {/* Neighborhood Average */}
+        <div style={{ background: "rgba(249,115,22,0.03)", border: "1px solid rgba(249,115,22,0.18)", borderRadius: "14px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ fontSize: "0.58rem", color: "#546e8a", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              تورم مسکن
-            </span>
-            <Tooltip text="نرخ تورم سالانه شاخص عمومی قیمت‌ها، با تأخیر ۳ ماهه — هرچه بالاتر، فشار قیمتی بیشتر" />
+            <MapPin size={13} color="#f97316" />
+            <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800 }}>میانگین محله (تعدیل‌شده)</span>
+            <Tooltip text="قیمت میانگین هر مترمربع در این محله، حاصل ضرب قیمت پایه منطقه در ضریب کیفی میکرو." />
           </div>
-          <span style={{ fontSize: "1.05rem", fontWeight: 900, color: inflColor, direction: "ltr" }}>
-            {pulse.inflation_yoy.toFixed(1)}٪
+          <span style={{ fontSize: "0.95rem", fontWeight: 900, color: "#f97316" }}>
+            {formatPersianCurrencyPerSqm(finalPrice)}
+          </span>
+        </div>
+
+        {/* Inflation YoY */}
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "14px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <TrendingUp size={13} color={inflColor} />
+            <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800 }}>تورم نقطه به نقطه مسکن</span>
+            <Tooltip text="نرخ تورم عمومی سالانه با تأخیر ۳ ماهه. این شاخص در روند کلان قیمت تأثیر مستقیم دارد." />
+          </div>
+          <span style={{ fontSize: "1.05rem", fontWeight: 900, color: inflColor }}>
+            {toPersianDigits(safeInflation.toFixed(1))}٪
           </span>
           <span style={{ fontSize: "0.6rem", color: "#546e8a" }}>سالانه (با تأخیر)</span>
         </div>
 
-        {/* GPR */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        {/* GPR Index */}
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "14px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ fontSize: "0.58rem", color: "#546e8a", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              ریسک ژئوپولیتیک
+            <Shield size={13} color="#edf2f7" />
+            <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800 }}>شاخص ریسک ژئوپولیتیک (GPR)</span>
+            <Tooltip text="شاخص سنجش تنش‌های سیاسی و بین‌المللی. مقادیر بالا نشان‌دهنده ریسک محیطی بالاتر است." />
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+            <span style={{ fontSize: "1.05rem", fontWeight: 900, color: "#edf2f7" }}>
+              {toPersianDigits(Math.round(pulse.gpr_index))}
             </span>
-            <Tooltip text="شاخص GPR ایران — مقادیر بالای ۱۲۰ یعنی تنش جدی؛ بالای ۱۸۰ یعنی بحران. این شاخص مستقیماً قیمت ملک را تحت تأثیر قرار می‌دهد." />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "1.05rem", fontWeight: 900, color: "#edf2f7", direction: "ltr" }}>
-              {Math.round(pulse.gpr_index)}
-            </span>
-            <GPRSparkline current={pulse.gpr_index} ma3={pulse.gpr_ma3} />
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
-            <GPRLabel gpr={pulse.gpr_index} />
-          </div>
+          <span style={{ fontSize: "0.64rem", color: gprTrendColor, fontWeight: 700 }}>
+            {gprTrendText}
+          </span>
         </div>
       </div>
     </div>
@@ -316,26 +432,26 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
   const rows = [
     {
       icon: <Train size={14} />,
-      label: "فاصله تا مترو",
-      tooltip: "نزدیکی به مترو معمولاً ارزش ملک را تا ۱۵٪ افزایش می‌دهد. فاصله کمتر از ۵۰۰ متر 'نقطه طلایی' محسوب می‌شود.",
+      label: "فاصله تا ایستگاه مترو",
+      tooltip: "دسترسی پیاده به مترو (کمتر از ۵۰۰ متر) ارزش ملک را تا ۱۵٪ افزایش می‌دهد.",
       value: <DistanceBadge meters={spatial.dist_to_metro_m} sweetSpotMin={0} sweetSpotMax={500} label="🚇" />,
     },
     {
       icon: <Navigation size={14} />,
       label: "فاصله تا بزرگراه",
-      tooltip: "فاصله بین ۲۰۰ تا ۹۰۰ متر از بزرگراه بهترین حالت است؛ دسترسی خوب بدون آلودگی صوتی.",
+      tooltip: "فاصله بین ۲۰۰ تا ۹۰۰ متر از بزرگراه، دسترسی عالی بدون سر و صدا ایجاد می‌کند.",
       value: <DistanceBadge meters={spatial.dist_to_highway_m} sweetSpotMin={200} sweetSpotMax={900} label="🛣️" />,
     },
     {
       icon: <Wind size={14} />,
       label: "کیفیت هوا (AQI)",
-      tooltip: "شاخص کیفیت هوا: ۰-۵۰ پاک، ۵۱-۱۰۰ قابل قبول، ۱۰۱-۱۵۰ ناسالم برای حساس‌ها، بالای ۱۵۰ ناسالم. هوای پاک ارزش ملک را بالا می‌برد.",
+      tooltip: "شاخص کیفیت هوا: ۰-۵۰ پاک، ۵۱-۱۰۰ قابل قبول، ۱۰۱-۱۵۰ ناسالم برای حساس‌ها، بالای ۱۵۰ ناسالم.",
       value: <AQIBadge aqi={spatial.air_quality_aqi} />,
     },
     {
       icon: <Shield size={14} />,
       label: "ریسک زلزله",
-      tooltip: "سطح خطر لرزه‌ای منطقه از ۱ (خیلی کم) تا ۴ (بالا). این فاکتور مستقیماً در مدل میکرو تأثیر دارد.",
+      tooltip: "درجه خطرات لرزه‌ای منطقه بر اساس داده‌های پهنه‌بندی از ۱ (کم‌ترین) تا ۴ (بیش‌ترین).",
       value: <SeismicScale level={spatial.seismic_risk_level} />,
     },
   ];
@@ -352,8 +468,8 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "14px" }}>
         <MapPin size={13} color="#2dd4bf" />
-        <span style={{ fontSize: "0.65rem", fontWeight: 800, color: "#546e8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          ویژگی‌های مکانی
+        <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "#546e8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          ویژگی‌های مکانی و دسترسی‌ها
         </span>
         {(metroSweet || hwySweet) && (
           <span
@@ -368,7 +484,7 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
               padding: "2px 10px",
             }}
           >
-            نقطه طلایی موقعیت 🌟
+            موقعیت طلایی 🌟
           </span>
         )}
       </div>
@@ -418,58 +534,6 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
   );
 }
 
-// ─── Confidence Range Bar ─────────────────────────────────────────────────────
-function ConfidenceBar({ low, mid, high }: { low: number; mid: number; high: number }) {
-  if (!low || !high || low >= high) return null;
-  const range = high - low;
-  const midPct = ((mid - low) / range) * 100;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "0.6rem", color: "#546e8a" }}>
-          Q5: {fmtM(low)}M تومان
-        </span>
-        <span style={{ fontSize: "0.58rem", color: "#546e8a" }}>بازه اطمینان ۹۰٪</span>
-        <span style={{ fontSize: "0.6rem", color: "#546e8a" }}>
-          Q95: {fmtM(high)}M تومان
-        </span>
-      </div>
-      <div
-        style={{
-          height: "7px",
-          borderRadius: "100px",
-          background: "rgba(255,255,255,0.06)",
-          position: "relative",
-          overflow: "visible",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute", left: 0, right: 0, top: 0, height: "100%",
-            borderRadius: "100px",
-            background: "linear-gradient(90deg, rgba(249,115,22,0.12), rgba(249,115,22,0.42), rgba(249,115,22,0.12))",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: `${midPct}%`,
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "14px", height: "14px",
-            borderRadius: "50%",
-            background: "#f97316",
-            border: "2.5px solid #fff",
-            boxShadow: "0 0 10px rgba(249,115,22,0.65)",
-            zIndex: 1,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // ─── Math Accordion ───────────────────────────────────────────────────────────
 function MathAccordion({ result }: { result: PredictionResult }) {
   const [open, setOpen] = useState(false);
@@ -477,10 +541,10 @@ function MathAccordion({ result }: { result: PredictionResult }) {
   const steps = [
     { label: "۱. نسبت مسکن به دلار (لگ یک ماهه)", detail: `housing_to_usd_lag1 = ${result.housing_to_usd_lag1.toFixed(6)}`, color: "#64748b" },
     { label: "۲. مدل ماکرو → لگ دیفرانسیل", detail: `Δ log(H/USD) = ${result.macro_diff.toFixed(6)}  [Q5: ${result.macro_diff_q05.toFixed(4)}, Q95: ${result.macro_diff_q95.toFixed(4)}]`, color: "#9ab0c7" },
-    { label: "۳. قیمت پایه ماکرو / م²", detail: `exp(log(${result.housing_to_usd_lag1.toFixed(4)}) + ${result.macro_diff.toFixed(4)}) × ${result.usd_rate.toFixed(0)} = ${fmtM(result.base_price_per_sqm)}M تومان`, color: "#64748b" },
-    { label: "۴. ضریب کیفی میکرو", detail: `Ratio = ${result.micro_ratio.toFixed(6)} → ${((result.micro_ratio - 1) * 100).toFixed(1)}% ${result.micro_ratio >= 1 ? "پریمیوم" : "تخفیف"}`, color: result.micro_ratio >= 1 ? "#22c55e" : "#f43f5e" },
-    { label: "۵. قیمت نهایی / م²", detail: `${fmtM(result.base_price_per_sqm)}M × ${result.micro_ratio.toFixed(4)} = ${fmtM(result.final_price_per_sqm)}M تومان`, color: "#f97316" },
-    { label: "۶. ارزش کل ملک", detail: `${fmtM(result.final_price_per_sqm)}M × ${result.area}m² = ${fmtM(result.final_total_price)}M تومان`, color: "#f59e0b" },
+    { label: "۳. قیمت پایه ماکرو / مترمربع", detail: `exp(log(${result.housing_to_usd_lag1.toFixed(4)}) + ${result.macro_diff.toFixed(4)}) × ${result.usd_rate.toFixed(0)} = ${formatPersianCurrencyPerSqm(result.base_price_per_sqm)}`, color: "#64748b" },
+    { label: "۴. ضریب کیفی میکرو", detail: `Ratio = ${result.micro_ratio.toFixed(6)} → ${toPersianDigits(((result.micro_ratio - 1) * 100).toFixed(1))}٪ ${result.micro_ratio >= 1 ? "پریمیوم" : "تخفیف"}`, color: result.micro_ratio >= 1 ? "#22c55e" : "#f43f5e" },
+    { label: "۵. قیمت نهایی / مترمربع", detail: `${formatPersianCurrencyPerSqm(result.base_price_per_sqm)} × ${result.micro_ratio.toFixed(4)} = ${formatPersianCurrencyPerSqm(result.final_price_per_sqm)}`, color: "#f97316" },
+    { label: "۶. ارزش کل ملک", detail: `${formatPersianCurrencyPerSqm(result.final_price_per_sqm)} × ${toPersianDigits(result.area)} مترمربع = ${formatPersianCurrency(result.final_total_price)}`, color: "#f59e0b" },
   ];
 
   return (
@@ -493,6 +557,7 @@ function MathAccordion({ result }: { result: PredictionResult }) {
       }}
     >
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
         style={{
           width: "100%",
@@ -508,7 +573,7 @@ function MathAccordion({ result }: { result: PredictionResult }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <Zap size={12} color="#f59e0b" />
-          <span style={{ fontSize: "0.75rem", fontWeight: 700 }}>چگونه محاسبه شد؟</span>
+          <span style={{ fontSize: "0.75rem", fontWeight: 700 }}>محاسبه ریاضی جزئیات</span>
         </div>
         <ChevronDown
           size={14}
@@ -545,30 +610,19 @@ function DebugPanel({ result }: { result: PredictionResult }) {
     `  macro_diff_q05      = ${result.macro_diff_q05.toFixed(6)}`,
     `  macro_diff_q95      = ${result.macro_diff_q95.toFixed(6)}`,
     ``,
-    `> PRICES [M Tomans/m²]`,
-    `  base (median) = ${fmtM(result.base_price_per_sqm)}`,
-    `  base (q05)    = ${fmtM(result.base_price_low)}`,
-    `  base (q95)    = ${fmtM(result.base_price_high)}`,
+    `> PRICES`,
+    `  base (median) = ${formatPersianCurrencyPerSqm(result.base_price_per_sqm)}`,
+    `  final         = ${formatPersianCurrencyPerSqm(result.final_price_per_sqm)}`,
+    `  total         = ${formatPersianCurrency(result.final_total_price)}`,
     ``,
     `> MICRO MODEL`,
     `  micro_ratio   = ${result.micro_ratio.toFixed(6)}`,
-    `  final/m²      = ${fmtM(result.final_price_per_sqm)}`,
-    ``,
-    `> TOTAL [M Tomans]`,
-    `  final         = ${fmtM(result.final_total_price)}`,
-    `  low  (q05)    = ${fmtM(result.final_total_low)}`,
-    `  high (q95)    = ${fmtM(result.final_total_high)}`,
     ``,
     `> SPATIAL`,
     `  metro = ${result.spatial.dist_to_metro_m.toFixed(0)}m`,
-    `  CBD   = ${result.spatial.dist_to_cbd_m.toFixed(0)}m`,
     `  hwy   = ${result.spatial.dist_to_highway_m.toFixed(0)}m`,
     `  AQI   = ${result.spatial.air_quality_aqi.toFixed(0)}`,
     `  seismic = ${result.spatial.seismic_risk_level}`,
-    ``,
-    `> REGION ${result.region_id} · ${result.neighborhood}`,
-    `  USD = ${result.usd_rate.toLocaleString()} Tomans`,
-    `  GPR = ${result.market_pulse?.gpr_index?.toFixed(1)}`,
   ];
 
   return (
@@ -594,15 +648,15 @@ function MetricCard({ label, value, sub, color, bg, icon, delay = 0, tooltip }: 
         <div style={{ width: "24px", height: "24px", borderRadius: "7px", background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center", color }}>
           {icon}
         </div>
-        <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "#546e8a", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span style={{ fontSize: "0.62rem", fontWeight: 800, color: "#546e8a", textTransform: "uppercase", letterSpacing: "0.04em" }}>
           {label}
         </span>
         {tooltip && <Tooltip text={tooltip} />}
       </div>
-      <div style={{ fontSize: "1.15rem", fontWeight: 900, color, lineHeight: 1 }} className="animate-countUp">
+      <div style={{ fontSize: "1.1rem", fontWeight: 900, color, lineHeight: 1.2 }} className="animate-countUp">
         {value}
       </div>
-      {sub && <div style={{ fontSize: "0.66rem", color: "#546e8a", marginTop: "1px" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: "0.66rem", color: "#546e8a", marginTop: "2px" }}>{sub}</div>}
     </div>
   );
 }
@@ -637,15 +691,15 @@ export default function ResultCard({
     return () => clearInterval(iv);
   }, [isLoading]);
 
-  // ── Loading ─────────────────────────────────────────────────────────────────
+  // ── Loading State ───────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="glass-card" style={{ padding: "32px", minHeight: "320px", display: "flex", flexDirection: "column", justifyContent: "center", border: "1px solid rgba(249,115,22,0.2)" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
           <div style={{ width: "52px", height: "52px", border: "3px solid rgba(249,115,22,0.12)", borderTopColor: "#f97316", borderRadius: "50%" }} className="animate-spin-slow" />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "10px", marginBottom: "16px" }}>
-          {[0, 1, 2, 3].map((i) => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px", marginBottom: "16px" }}>
+          {[0, 1, 2].map((i) => (
             <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "14px" }} />
           ))}
         </div>
@@ -662,7 +716,7 @@ export default function ResultCard({
     );
   }
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // ── Error State ─────────────────────────────────────────────────────────────
   if (error) {
     return (
       <div className="glass-card" style={{ padding: "28px", border: "1px solid rgba(244,63,94,0.2)", background: "rgba(244,63,94,0.025)" }}>
@@ -700,7 +754,7 @@ export default function ResultCard({
           {["انتخاب موقعیت", "ورود اطلاعات", "دریافت ارزیابی"].map((s, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: "7px", opacity: 0.5 }}>
               <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "rgba(249,115,22,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6rem", fontWeight: 900, color: "#f97316" }}>
-                {i + 1}
+                {toPersianDigits(i + 1)}
               </div>
               <span style={{ fontSize: "0.7rem", color: "#64748b" }}>{s}</span>
               {i < 2 && <ChevronRight size={11} color="#334155" />}
@@ -711,14 +765,14 @@ export default function ResultCard({
     );
   }
 
-  // ── Result ─────────────────────────────────────────────────────────────────
+  // ── Calculated Values ───────────────────────────────────────────────────────
   const qualityPct = ((result.micro_ratio - 1) * 100).toFixed(1);
   const qualitySign = result.micro_ratio >= 1 ? "+" : "";
   const qualityColor = result.micro_ratio >= 1 ? "#22c55e" : "#f43f5e";
   const usdEquiv = (result.final_total_price * 1_000_000) / result.usd_rate;
 
-  // Data range subtext
-  const dataSubtext = `بر اساس داده‌های معاملات واقعی از ۱۴۰۰/۱ تا ${result.year_jalali}/${result.month_jalali}`;
+  // Correct dynamic subtext format: "بر اساس داده‌های معاملات واقعی از ۱۳۹۵ تا [Year/Month]"
+  const dataSubtext = `بر اساس داده‌های معاملات واقعی از ۱۳۹۵ تا ${toPersianDigits(result.year_jalali)}/${toPersianDigits(result.month_jalali)}`;
 
   return (
     <div className="glass-card" style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: "18px" }}>
@@ -748,22 +802,22 @@ export default function ResultCard({
                 >
                   {result.candidate_neighborhoods.map((c) => (
                     <option key={c.slug} value={c.slug} style={{ background: "#161b27", color: "#f8fafc" }}>
-                      {c.name} ({c.distance_km}km) · منطقه {c.region_id}
+                      {c.name} ({toPersianDigits(c.distance_km)} کیلومتر) · منطقه {toPersianDigits(c.region_id)}
                     </option>
                   ))}
                 </select>
               ) : (
                 <span style={{ fontSize: "0.7rem", color: "#2dd4bf", fontWeight: 700 }}>
-                  {result.neighborhood_name} · منطقه {result.region_id}
+                  {result.neighborhood_name} · منطقه {toPersianDigits(result.region_id)}
                 </span>
               )}
             </div>
           </div>
         </div>
         <div style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.18)", borderRadius: "10px", padding: "7px 14px", textAlign: "right" }}>
-          <div style={{ fontSize: "0.57rem", color: "#546e8a", marginBottom: "2px", fontWeight: 700 }}>متراژ</div>
-          <div style={{ fontWeight: 900, color: "#2dd4bf", fontSize: "0.85rem", direction: "ltr" }}>
-            {result.area.toLocaleString()} م²
+          <div style={{ fontSize: "0.57rem", color: "#546e8a", marginBottom: "2px", fontWeight: 700 }}>متراژ ملک</div>
+          <div style={{ fontWeight: 900, color: "#2dd4bf", fontSize: "0.88rem" }}>
+            {toPersianDigits(result.area.toLocaleString())} مترمربع
           </div>
         </div>
       </div>
@@ -778,60 +832,70 @@ export default function ResultCard({
           animation: "fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) 100ms both",
         }}
       >
-        <div style={{ fontSize: "0.62rem", color: "#546e8a", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>
+        <div style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "6px" }}>
           ارزش تخمینی کل ملک
         </div>
-        <div className="gradient-text" style={{ fontSize: "2.1rem", fontWeight: 900, lineHeight: 1 }}>
-          {fmtM(result.final_total_price)} میلیون تومان
+        {/* Persian Billion/Million formatted price */}
+        <div className="gradient-text" style={{ fontSize: "2.1rem", fontWeight: 900, lineHeight: 1.1 }}>
+          {formatPersianCurrency(result.final_total_price)}
         </div>
-        <div style={{ fontSize: "0.72rem", color: "#546e8a", marginTop: "7px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <span>{fmtToman(result.final_total_price)} تومان</span>
+        <div style={{ fontSize: "0.75rem", color: "#546e8a", marginTop: "8px", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+          <span>{formatTomanFull(result.final_total_price)}</span>
           <span>·</span>
-          <span style={{ direction: "ltr", display: "inline-block" }}>≈ ${usdEquiv.toLocaleString("en-US", { maximumFractionDigits: 0 })} USD</span>
+          <span style={{ direction: "ltr", display: "inline-block" }}>
+            ≈ ${toPersianDigits(usdEquiv.toLocaleString("en-US", { maximumFractionDigits: 0 }))} USD
+          </span>
         </div>
-        <div style={{ fontSize: "0.62rem", color: "#546e8a", marginTop: "6px", fontStyle: "italic" }}>
+        <div style={{ fontSize: "0.64rem", color: "#546e8a", marginTop: "6px", fontStyle: "italic" }}>
           {dataSubtext}
         </div>
 
+        {/* Confidence Interval Chart */}
         <ConfidenceBar low={result.final_total_low} mid={result.final_total_price} high={result.final_total_high} />
       </div>
 
       {/* ── Metric Cards ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
         <MetricCard
-          label="قیمت پایه / م²"
-          value={`${fmtM(result.base_price_per_sqm)}M`}
+          label="قیمت پایه / مترمربع"
+          value={formatPersianCurrencyPerSqm(result.base_price_per_sqm)}
           sub="مدل ماکرو (میانه)"
           color="#9ab0c7"
           bg="rgba(154,176,199,0.04)"
           icon={<BarChart3 size={11} />}
           delay={0}
-          tooltip="قیمت پایه محاسبه‌شده از نسبت مسکن به دلار و مدل ماکرو. این قیمت ویژگی‌های خاص ملک را لحاظ نمی‌کند."
+          tooltip="قیمت پایه هر مترمربع بر اساس مدل ماکروی اقتصاد مسکن تهران."
         />
         <MetricCard
-          label="ضریب کیفی ×"
-          value={`×${result.micro_ratio.toFixed(3)}`}
-          sub={`${qualitySign}${qualityPct}٪ ${result.micro_ratio >= 1 ? "پریمیوم" : "تخفیف"}`}
+          label="ضریب کیفی میکرو"
+          value={`×${toPersianDigits(result.micro_ratio.toFixed(3))}`}
+          sub={`${toPersianDigits(qualitySign)}${toPersianDigits(qualityPct)}٪ ${result.micro_ratio >= 1 ? "پریمیوم" : "تخفیف"}`}
           color={qualityColor}
           bg={`${qualityColor}08`}
           icon={<TrendingUp size={11} />}
           delay={80}
-          tooltip="خروجی مدل میکرو که تأثیر ویژگی‌های خاص ملک (متراژ، طبقه، امکانات، موقعیت) را به‌صورت ضریب نشان می‌دهد."
+          tooltip="ضریب کیفی ناشی از مشخصات خاص ملک (طبقه، متراژ، امکانات و موقعیت مکانی)."
         />
         <MetricCard
-          label="قیمت نهایی / م²"
-          value={`${fmtM(result.final_price_per_sqm)}M`}
-          sub={`تومان — ≈ $${((result.final_price_per_sqm * 1_000_000) / result.usd_rate).toFixed(0)}/م²`}
+          label="قیمت نهایی / مترمربع"
+          value={formatPersianCurrencyPerSqm(result.final_price_per_sqm)}
+          sub={`≈ $${toPersianDigits(((result.final_price_per_sqm * 1_000_000) / result.usd_rate).toFixed(0))}/مترمربع`}
           color="#f97316"
           bg="rgba(249,115,22,0.06)"
           icon={<Activity size={11} />}
           delay={160}
-          tooltip="قیمت هر متر مربع پس از اعمال ضریب کیفی میکرو روی قیمت پایه ماکرو."
+          tooltip="قیمت نهایی هر مترمربع پس از اعمال ضریب کیفی روی قیمت پایه."
         />
       </div>
 
       {/* ── Market Pulse ── */}
-      {result.market_pulse && <MarketPulseWidget pulse={result.market_pulse} />}
+      {result.market_pulse && (
+        <MarketPulseWidget
+          pulse={result.market_pulse}
+          basePrice={result.base_price_per_sqm}
+          finalPrice={result.final_price_per_sqm}
+        />
+      )}
 
       {/* ── Spatial Features Panel ── */}
       {result.spatial && <SpatialPanel spatial={result.spatial} />}
@@ -843,9 +907,8 @@ export default function ResultCard({
       {debugMode && <DebugPanel result={result} />}
 
       {/* ── Disclaimer ── */}
-      <div style={{ fontSize: "0.6rem", color: "#334155", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.04)", paddingTop: "10px", lineHeight: 1.7 }}>
-        ارزیابی هوشمند بر اساس مدل XGBoost V2 و داده‌های مکانی BigQuery — مشاوره مالی نیست.
-        داده‌ها: {result.year_jalali}/{result.month_jalali}
+      <div style={{ fontSize: "0.62rem", color: "#334155", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.04)", paddingTop: "10px", lineHeight: 1.7 }}>
+        ارزیابی هوشمند بر اساس مدل XGBoost V2 و داده‌های مکانی BigQuery — داده‌ها: {toPersianDigits(result.year_jalali)}/{toPersianDigits(result.month_jalali)}
       </div>
     </div>
   );

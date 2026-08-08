@@ -12,8 +12,16 @@ import {
   ChevronRight,
   Zap,
   MapPin,
+  Check,
 } from "lucide-react";
 import { getTopCandidates } from "../utils/neighborhoods";
+
+// ─── Utility: Persian Digits ──────────────────────────────────────────────────
+export function toPersianDigits(n: number | string): string {
+  if (n === null || n === undefined) return "";
+  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+  return String(n).replace(/\d/g, (d) => persianDigits[parseInt(d, 10)]);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface FormValues {
@@ -26,7 +34,7 @@ export interface FormValues {
   has_elevator: boolean;
   has_parking: boolean;
   is_villa: boolean;
-  has_storage: boolean; // UI placebo — not sent to model
+  has_storage: boolean;
 }
 
 interface PredictionFormProps {
@@ -35,7 +43,6 @@ interface PredictionFormProps {
   isLoading: boolean;
 }
 
-// ─── Step Definitions ─────────────────────────────────────────────────────────
 type Step = "type" | "area" | "rooms" | "age" | "floors" | "amenities" | "review";
 const STEPS: Step[] = ["type", "area", "rooms", "age", "floors", "amenities", "review"];
 
@@ -49,21 +56,19 @@ const STEP_META: Record<Step, { label: string; icon: React.ReactNode }> = {
   review:    { label: "بررسی نهایی",   icon: <Zap size={14} /> },
 };
 
-// ─── Defaults ─────────────────────────────────────────────────────────────────
 const DEFAULT: FormValues = {
   area: 100,
   building_age: 10,
-  total_floors: 6,
+  total_floors: 5,
   floor_num: 2,
   unit_per_floor: 2,
   rooms_count: 2,
   has_elevator: true,
   has_parking: true,
   is_villa: false,
-  has_storage: false,
+  has_storage: true,
 };
 
-// ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (
     <div
@@ -80,17 +85,16 @@ function Spinner() {
   );
 }
 
-// ─── Step Progress Bar ────────────────────────────────────────────────────────
 function StepBar({ current }: { current: Step }) {
   const idx = STEPS.indexOf(current);
   const pct = (idx / (STEPS.length - 1)) * 100;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>
-          مرحله {idx + 1} از {STEPS.length}
+        <span style={{ fontSize: "0.62rem", color: "#546e8a", fontWeight: 700 }}>
+          مرحله {toPersianDigits(idx + 1)} از {toPersianDigits(STEPS.length)}
         </span>
-        <span style={{ fontSize: "0.6rem", color: "#546e8a" }}>
+        <span style={{ fontSize: "0.62rem", color: "#546e8a" }}>
           {STEP_META[current].label}
         </span>
       </div>
@@ -116,7 +120,6 @@ function StepBar({ current }: { current: Step }) {
   );
 }
 
-// ─── Option Card ──────────────────────────────────────────────────────────────
 function OptionCard({
   icon, label, sub, selected, onClick, id,
 }: {
@@ -126,6 +129,7 @@ function OptionCard({
   return (
     <button
       id={id}
+      type="button"
       onClick={onClick}
       style={{
         background: selected
@@ -162,7 +166,7 @@ function OptionCard({
         {icon}
       </div>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: "0.85rem", fontWeight: 800, color: selected ? "#f59e0b" : "#9ab0c7" }}>
+        <div style={{ fontSize: "0.88rem", fontWeight: 800, color: selected ? "#f59e0b" : "#9ab0c7" }}>
           {label}
         </div>
         {sub && (
@@ -173,24 +177,24 @@ function OptionCard({
   );
 }
 
-// ─── Pill Button ──────────────────────────────────────────────────────────────
 function Pill({ label, selected, onClick, id }: { label: string; selected: boolean; onClick: () => void; id?: string }) {
   return (
     <button
       id={id}
+      type="button"
       onClick={onClick}
       style={{
         background: selected ? "rgba(249,115,22,0.16)" : "rgba(255,255,255,0.03)",
         border: selected ? "1.5px solid rgba(249,115,22,0.55)" : "1px solid rgba(255,255,255,0.08)",
         borderRadius: "100px",
-        padding: "9px 20px",
+        padding: "8px 16px",
         cursor: "pointer",
-        fontSize: "0.85rem",
+        fontSize: "0.82rem",
         fontWeight: 800,
         color: selected ? "#f97316" : "#64748b",
         transition: "all 0.18s ease",
-        transform: selected ? "scale(1.06)" : "scale(1)",
-        boxShadow: selected ? "0 0 14px rgba(249,115,22,0.22)" : "none",
+        transform: selected ? "scale(1.05)" : "scale(1)",
+        boxShadow: selected ? "0 0 12px rgba(249,115,22,0.22)" : "none",
       }}
     >
       {label}
@@ -198,76 +202,105 @@ function Pill({ label, selected, onClick, id }: { label: string; selected: boole
   );
 }
 
-// ─── Amenity Toggle (pill-shaped, full row) ───────────────────────────────────
-function AmenityToggle({
-  icon, label, sub, value, onChange, id, color = "green",
+// ─── Fully Enclosed Segmented Control for Amenities ───────────────────────────
+function AmenitySegment({
+  icon, label, sub, value, onChange, id
 }: {
   icon: React.ReactNode; label: string; sub?: string;
   value: boolean; onChange: (v: boolean) => void; id?: string;
-  color?: "green" | "teal" | "blue";
 }) {
-  const colors = {
-    green: { bg: "rgba(34,197,94,0.06)", border: "rgba(34,197,94,0.28)", iconBg: "rgba(34,197,94,0.12)", iconColor: "#22c55e", textColor: "#22c55e" },
-    teal:  { bg: "rgba(45,212,191,0.06)", border: "rgba(45,212,191,0.28)", iconBg: "rgba(45,212,191,0.12)", iconColor: "#2dd4bf", textColor: "#2dd4bf" },
-    blue:  { bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.28)", iconBg: "rgba(96,165,250,0.12)", iconColor: "#60a5fa", textColor: "#60a5fa" },
-  };
-  const c = colors[color];
-
   return (
-    <button
+    <div
       id={id}
-      onClick={() => onChange(!value)}
       style={{
-        background: value ? c.bg : "rgba(255,255,255,0.025)",
-        border: value ? `1.5px solid ${c.border}` : "1px solid rgba(255,255,255,0.07)",
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: "14px",
-        padding: "14px 16px",
-        cursor: "pointer",
+        padding: "12px 14px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         gap: "12px",
-        transition: "all 0.2s ease",
         width: "100%",
-        boxShadow: value ? `0 0 14px ${c.border}40` : "none",
+        boxSizing: "border-box",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <div
           style={{
             width: "34px",
             height: "34px",
             borderRadius: "10px",
-            background: value ? c.iconBg : "rgba(255,255,255,0.05)",
+            background: value ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: value ? c.iconColor : "#546e8a",
+            color: value ? "#f59e0b" : "#546e8a",
             flexShrink: 0,
           }}
         >
           {icon}
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "0.82rem", fontWeight: 800, color: value ? c.textColor : "#9ab0c7" }}>
+          <div style={{ fontSize: "0.82rem", fontWeight: 800, color: "#edf2f7" }}>
             {label}
           </div>
           {sub && <div style={{ fontSize: "0.62rem", color: "#546e8a", marginTop: "2px" }}>{sub}</div>}
         </div>
       </div>
-      {/* Pill toggle */}
+
+      {/* Enclosed Segment Controls */}
       <div
-        className={`toggle-track ${value ? "active" : ""}`}
-        aria-checked={value}
-        role="switch"
+        style={{
+          background: "rgba(0,0,0,0.35)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "100px",
+          padding: "3px",
+          display: "flex",
+          gap: "3px",
+          flexShrink: 0,
+        }}
       >
-        <div className="toggle-thumb" />
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          style={{
+            background: value ? "linear-gradient(135deg, #22c55e, #16a34a)" : "transparent",
+            color: value ? "#fff" : "#64748b",
+            border: "none",
+            borderRadius: "100px",
+            padding: "5px 14px",
+            fontSize: "0.74rem",
+            fontWeight: 800,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: value ? "0 2px 10px rgba(34,197,94,0.4)" : "none",
+          }}
+        >
+          دارد
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          style={{
+            background: !value ? "rgba(244,63,94,0.2)" : "transparent",
+            color: !value ? "#f43f5e" : "#64748b",
+            border: !value ? "1px solid rgba(244,63,94,0.4)" : "none",
+            borderRadius: "100px",
+            padding: "5px 14px",
+            fontSize: "0.74rem",
+            fontWeight: 800,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          ندارد
+        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
-// ─── Number Stepper ───────────────────────────────────────────────────────────
 function Stepper({
   label, value, min, max, onChange, id,
 }: {
@@ -277,9 +310,10 @@ function Stepper({
   const atMax = value >= max;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
-      <span style={{ fontSize: "0.62rem", color: "#64748b", fontWeight: 700, textAlign: "center" }}>{label}</span>
+      <span style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: 700, textAlign: "center" }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <button
+          type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
           style={{
             width: "34px", height: "34px",
@@ -300,13 +334,14 @@ function Stepper({
             flex: 1,
             textAlign: "center",
             fontWeight: 900,
-            fontSize: "1.15rem",
+            fontSize: "1.1rem",
             color: atMax ? "#f59e0b" : "#edf2f7",
           }}
         >
-          {atMax ? `${max}+` : value}
+          {atMax ? toPersianDigits(`${max}+`) : toPersianDigits(value)}
         </div>
         <button
+          type="button"
           onClick={() => onChange(Math.min(max, value + 1))}
           style={{
             width: "34px", height: "34px",
@@ -326,7 +361,6 @@ function Stepper({
   );
 }
 
-// ─── Review Row ───────────────────────────────────────────────────────────────
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div
@@ -344,7 +378,14 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Unit Floor Selection List ────────────────────────────────────────────────
+const UNIT_FLOOR_OPTIONS = [
+  { label: "زیرهمکف", value: -1 },
+  { label: "همکف", value: 0 },
+  ...Array.from({ length: 20 }, (_, i) => ({ label: toPersianDigits(i + 1), value: i + 1 })),
+  { label: "۲۰+", value: 21 },
+];
+
 export default function PredictionForm({
   selectedLocation,
   onSubmit,
@@ -369,7 +410,21 @@ export default function PredictionForm({
   }, [selectedLocation?.lat, selectedLocation?.lon]);
 
   const set = useCallback(<K extends keyof FormValues>(key: K, value: FormValues[K]) => {
-    setVals((prev) => ({ ...prev, [key]: value }));
+    setVals((prev) => {
+      const next = { ...prev, [key]: value };
+      // Logic check: Total Floors MUST be >= Unit Floor
+      if (key === "floor_num" && typeof value === "number") {
+        if (value > 0 && next.total_floors < value) {
+          next.total_floors = value;
+        }
+      }
+      if (key === "total_floors" && typeof value === "number") {
+        if (prev.floor_num > 0 && value < prev.floor_num) {
+          next.floor_num = value;
+        }
+      }
+      return next;
+    });
   }, []);
 
   const goNext = useCallback(() => {
@@ -443,10 +498,15 @@ export default function PredictionForm({
               value={vals.area === 0 ? "" : vals.area}
               min={20}
               max={1000}
-              onFocus={(e) => { if (Number(e.target.value) === 0 || e.target.value === "0") { set("area", 0 as unknown as number); e.target.select(); } }}
+              onFocus={(e) => {
+                if (e.target.value === "0" || e.target.value === "۰") {
+                  set("area", "" as unknown as number);
+                }
+              }}
               onChange={(e) => {
-                const n = e.target.value === "" ? 0 : Number(e.target.value);
-                set("area", n);
+                const val = e.target.value;
+                if (val === "") set("area", 0);
+                else set("area", Number(val));
               }}
               className="form-input"
               style={{
@@ -459,7 +519,7 @@ export default function PredictionForm({
                 direction: "ltr",
               }}
             />
-            <span style={{ fontSize: "1rem", color: "#546e8a", fontWeight: 700 }}>متر مربع</span>
+            <span style={{ fontSize: "1rem", color: "#546e8a", fontWeight: 700 }}>مترمربع</span>
           </div>
           <input
             id="area-slider"
@@ -476,19 +536,20 @@ export default function PredictionForm({
               <button
                 key={v}
                 id={`area-quick-${v}`}
+                type="button"
                 onClick={() => set("area", v)}
                 style={{
                   background: vals.area === v ? "rgba(245,158,11,0.14)" : "rgba(255,255,255,0.04)",
                   border: vals.area === v ? "1px solid rgba(245,158,11,0.45)" : "1px solid rgba(255,255,255,0.07)",
                   borderRadius: "10px",
-                  padding: "5px 8px",
+                  padding: "5px 10px",
                   cursor: "pointer",
-                  fontSize: "0.68rem",
+                  fontSize: "0.72rem",
                   fontWeight: 700,
                   color: vals.area === v ? "#f59e0b" : "#64748b",
                 }}
               >
-                {v}
+                {toPersianDigits(v)}
               </button>
             ))}
           </div>
@@ -507,7 +568,7 @@ export default function PredictionForm({
             <Pill
               key={n}
               id={`rooms-${n}`}
-              label={n === 5 ? "۵+" : String(n)}
+              label={n === 5 ? "۵+" : toPersianDigits(n)}
               selected={vals.rooms_count === n}
               onClick={() => { set("rooms_count", n); setTimeout(goNext, 200); }}
             />
@@ -527,6 +588,7 @@ export default function PredictionForm({
             <button
               key={opt.label}
               id={`age-${opt.value}`}
+              type="button"
               onClick={() => { set("building_age", opt.value); setTimeout(goNext, 200); }}
               style={{
                 background: vals.building_age === opt.value ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.025)",
@@ -547,50 +609,86 @@ export default function PredictionForm({
           ))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "0.65rem", color: "#546e8a" }}>یا دقیق وارد کنید:</span>
+          <span style={{ fontSize: "0.68rem", color: "#546e8a" }}>یا دقیق وارد کنید:</span>
           <input
             id="age-exact"
             type="number"
             value={vals.building_age === 0 ? "" : vals.building_age}
             min={0}
             max={80}
-            onFocus={(e) => e.target.select()}
+            onFocus={(e) => {
+              if (e.target.value === "0" || e.target.value === "۰") e.target.value = "";
+            }}
             onChange={(e) => set("building_age", e.target.value === "" ? 0 : Number(e.target.value))}
             className="form-input"
             style={{ maxWidth: "80px", padding: "6px 10px", fontSize: "0.88rem", direction: "ltr", textAlign: "center" }}
           />
-          <span style={{ fontSize: "0.65rem", color: "#546e8a" }}>سال</span>
+          <span style={{ fontSize: "0.68rem", color: "#546e8a" }}>سال</span>
         </div>
       </div>
     ),
 
-    // ── Step 5: طبقه ──────────────────────────────────────────────────────────
+    // ── Step 5: طبقه (Redesigned 3-Step Floor Logic) ──────────────────────────
     floors: (
-      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
-          جزئیات طبقه‌بندی
+          جزئیات طبقه‌بندی ملک
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
+
+        {/* 1. Unit Floor Selection */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#f97316" }}>
+            ۱. طبقه واحد:
+          </span>
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", maxHeight: "120px", overflowY: "auto", padding: "2px" }}>
+            {UNIT_FLOOR_OPTIONS.map((opt) => {
+              const isSelected = vals.floor_num === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => set("floor_num", opt.value)}
+                  style={{
+                    background: isSelected ? "rgba(249,115,22,0.18)" : "rgba(255,255,255,0.03)",
+                    border: isSelected ? "1.5px solid #f97316" : "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: "100px",
+                    padding: "6px 14px",
+                    fontSize: "0.78rem",
+                    fontWeight: isSelected ? 800 : 600,
+                    color: isSelected ? "#f97316" : "#9ab0c7",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 2. Total Floors & Units per floor */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: "14px",
+            padding: "14px",
+            display: "flex",
+            gap: "14px",
+          }}
+        >
           <Stepper
-            label="کل طبقات"
+            label="۲. کل طبقات ساختمان"
             id="total-floors"
             value={vals.total_floors}
-            min={1}
-            max={25}
+            min={Math.max(1, vals.floor_num > 0 ? vals.floor_num : 1)}
+            max={35}
             onChange={(v) => set("total_floors", v)}
           />
           <div style={{ width: "1px", background: "rgba(255,255,255,0.06)", alignSelf: "stretch" }} />
           <Stepper
-            label="طبقه واحد"
-            id="floor-num"
-            value={vals.floor_num}
-            min={0}
-            max={vals.total_floors}
-            onChange={(v) => set("floor_num", Math.min(v, vals.total_floors))}
-          />
-          <div style={{ width: "1px", background: "rgba(255,255,255,0.06)", alignSelf: "stretch" }} />
-          <Stepper
-            label="واحد/طبقه"
+            label="۳. واحد در هر طبقه"
             id="unit-per-floor"
             value={vals.unit_per_floor}
             min={1}
@@ -601,22 +699,21 @@ export default function PredictionForm({
       </div>
     ),
 
-    // ── Step 6: امکانات ───────────────────────────────────────────────────────
+    // ── Step 6: امکانات (Enclosed Segmented Controls) ─────────────────────────
     amenities: (
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
           امکانات ملک
         </div>
-        <AmenityToggle
+        <AmenitySegment
           id="toggle-elevator"
           icon={<Layers size={16} />}
           label="آسانسور"
           sub="تأثیر زیادی بر ارزش طبقات بالا دارد"
           value={vals.has_elevator}
           onChange={(v) => set("has_elevator", v)}
-          color="green"
         />
-        <AmenityToggle
+        <AmenitySegment
           id="toggle-parking"
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -628,9 +725,8 @@ export default function PredictionForm({
           sub="جای پارک اختصاصی"
           value={vals.has_parking}
           onChange={(v) => set("has_parking", v)}
-          color="teal"
         />
-        <AmenityToggle
+        <AmenitySegment
           id="toggle-storage"
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -638,10 +734,9 @@ export default function PredictionForm({
             </svg>
           }
           label="انباری"
-          sub="فضای ذخیره‌سازی جداگانه"
+          sub="فضای ذخیره‌سازی اختصاصی"
           value={vals.has_storage}
           onChange={(v) => set("has_storage", v)}
-          color="blue"
         />
       </div>
     ),
@@ -653,7 +748,6 @@ export default function PredictionForm({
           بررسی و ارزیابی
         </div>
 
-        {/* Neighborhood selection */}
         {selectedLocation && candidates.length > 0 && (
           <div
             style={{
@@ -734,8 +828,8 @@ export default function PredictionForm({
                       </div>
                     </div>
                     <div style={{ textAlign: "left", fontSize: "0.62rem", color: isSelected ? "#f97316" : "#546e8a" }}>
-                      <span style={{ direction: "ltr", display: "inline-block" }}>{c.distance_km} km</span>
-                      <span style={{ marginRight: "4px", opacity: 0.7 }}>· منطقه {c.region_id}</span>
+                      <span style={{ direction: "ltr", display: "inline-block" }}>{toPersianDigits(c.distance_km)} km</span>
+                      <span style={{ marginRight: "4px", opacity: 0.7 }}>· منطقه {toPersianDigits(c.region_id)}</span>
                     </div>
                   </button>
                 );
@@ -754,11 +848,12 @@ export default function PredictionForm({
           }}
         >
           <ReviewRow label="نوع ملک"     value={vals.is_villa ? "ویلا" : "آپارتمان"} />
-          <ReviewRow label="متراژ"        value={`${vals.area} م²`} />
-          <ReviewRow label="اتاق خواب"    value={`${vals.rooms_count} اتاق`} />
-          <ReviewRow label="سن بنا"       value={`${vals.building_age} سال`} />
-          <ReviewRow label="طبقه"         value={`${vals.floor_num} از ${vals.total_floors}`} />
-          <ReviewRow label="واحد/طبقه"   value={String(vals.unit_per_floor)} />
+          <ReviewRow label="متراژ"        value={`${toPersianDigits(vals.area)} مترمربع`} />
+          <ReviewRow label="اتاق خواب"    value={`${toPersianDigits(vals.rooms_count)} اتاق`} />
+          <ReviewRow label="سن بنا"       value={`${toPersianDigits(vals.building_age)} سال`} />
+          <ReviewRow label="طبقه واحد"    value={vals.floor_num === -1 ? "زیرهمکف" : vals.floor_num === 0 ? "همکف" : `طبقه ${toPersianDigits(vals.floor_num)}`} />
+          <ReviewRow label="کل طبقات"     value={`${toPersianDigits(vals.total_floors)} طبقه`} />
+          <ReviewRow label="واحد/طبقه"   value={toPersianDigits(vals.unit_per_floor)} />
           <ReviewRow label="آسانسور"      value={vals.has_elevator ? "✓ دارد" : "✗ ندارد"} />
           <ReviewRow label="پارکینگ"      value={vals.has_parking ? "✓ دارد" : "✗ ندارد"} />
           <ReviewRow label="انباری"       value={vals.has_storage ? "✓ دارد" : "✗ ندارد"} />
@@ -792,7 +887,6 @@ export default function PredictionForm({
     <div style={{ display: "flex", flexDirection: "column", gap: "14px", height: "100%" }}>
       <StepBar current={step} />
 
-      {/* Location guard */}
       {!selectedLocation && (
         <div
           style={{
@@ -813,7 +907,6 @@ export default function PredictionForm({
         </div>
       )}
 
-      {/* Step content */}
       <div
         key={step}
         style={{
@@ -825,10 +918,10 @@ export default function PredictionForm({
         {stepContent[step]}
       </div>
 
-      {/* Nav buttons */}
       <div style={{ display: "flex", gap: "8px", marginTop: "auto" }}>
         {!isFirst && (
           <button
+            type="button"
             onClick={goPrev}
             style={{
               background: "rgba(255,255,255,0.04)",
@@ -851,6 +944,7 @@ export default function PredictionForm({
 
         {!isReview && (
           <button
+            type="button"
             onClick={goNext}
             style={{
               flex: 1,
@@ -872,6 +966,7 @@ export default function PredictionForm({
         {isReview && (
           <button
             id="submit-valuation"
+            type="button"
             onClick={() => canProceed && !isLoading && onSubmit(vals, activeSlug)}
             disabled={!canProceed || isLoading}
             className="btn-gold"
