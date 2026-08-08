@@ -664,26 +664,10 @@ async def lifespan(app: FastAPI):
         micro.load_model(os.path.join(MODELS_DIR, "micro_model_v2.json"))
         print("[startup] micro_model_v2.json loaded ✓")
 
-        with open(os.path.join(MODELS_DIR, "neighborhood_encoding_v2.json"), encoding="utf-8") as f:
-            enc = json.load(f)
-        print("[startup] neighborhood_encoding_v2.json loaded ✓")
-
-        global_mean = float(enc.get("GLOBAL_MEAN", 0.8512489971975457))
-        district_means = {}
-        for rid in range(1, 23):
-            r_slugs = [item["slug"] for item in NEIGHBORHOODS_DATA if item["region_id"] == rid]
-            vals = [enc[s] for s in r_slugs if s in enc]
-            if vals:
-                district_means[rid] = sum(vals) / len(vals)
-            else:
-                district_means[rid] = global_mean
-
         _cache["macro"]          = macro
         _cache["macro_q05"]      = macro_q05
         _cache["macro_q95"]      = macro_q95
         _cache["micro"]          = micro
-        _cache["encoding"]       = enc
-        _cache["district_means"] = district_means
         print("[startup] ✅ All V2 models loaded successfully. Ready for predictions.")
     except Exception as e:
         print(f"[startup] ❌ Fatal error loading models: {e}")
@@ -740,23 +724,41 @@ class SpatialFeatures(BaseModel):
 
 def fetch_neighborhood_avg_ratio(client, region_id: int, neighborhood_slug: str) -> float:
     normalized_slug = normalize_slug(neighborhood_slug)
+    
+    # 1. Try specific neighborhood
     query = f"""
         SELECT 
           ROUND(AVG(target_ratio), 3) AS avg_quality_ratio
         FROM `siavak-temp-aliz.divar_ml_data_prepration.ml_final_micro_training_data`
         WHERE region_id = {region_id} AND neighborhood_slug = '{normalized_slug}'
     """
-    print(f"[fetch_neighborhood_avg_ratio] Executing query: SELECT ROUND(AVG(target_ratio), 3) AS avg_quality_ratio FROM siavak-temp-aliz.divar_ml_data_prepration.ml_final_micro_training_data WHERE region_id = {region_id} AND neighborhood_slug = '{normalized_slug}'")
     try:
         rows = list(client.query(query).result())
         if rows and rows[0]["avg_quality_ratio"] is not None:
             val = float(rows[0]["avg_quality_ratio"])
             print(f"[fetch_neighborhood_avg_ratio] SUCCESS: region={region_id}, slug='{normalized_slug}' -> avg_quality_ratio={val}")
             return val
-        else:
-            print(f"[fetch_neighborhood_avg_ratio] No rows or NULL ratio for region={region_id}, slug='{normalized_slug}', fallback to 1.0")
     except Exception as e:
         print(f"[fetch_neighborhood_avg_ratio_error] Query execution failed: {e}")
+        
+    # 2. Fallback to district mean
+    print(f"[fetch_neighborhood_avg_ratio] No rows for slug='{normalized_slug}', fallback to district {region_id} mean...")
+    query_fallback = f"""
+        SELECT 
+          ROUND(AVG(target_ratio), 3) AS avg_quality_ratio
+        FROM `siavak-temp-aliz.divar_ml_data_prepration.ml_final_micro_training_data`
+        WHERE region_id = {region_id}
+    """
+    try:
+        rows = list(client.query(query_fallback).result())
+        if rows and rows[0]["avg_quality_ratio"] is not None:
+            val = float(rows[0]["avg_quality_ratio"])
+            print(f"[fetch_neighborhood_avg_ratio] FALLBACK SUCCESS: district {region_id} -> avg_quality_ratio={val}")
+            return val
+    except Exception as e:
+        print(f"[fetch_neighborhood_avg_ratio_error] District fallback failed: {e}")
+        
+    print("[fetch_neighborhood_avg_ratio] All queries failed, returning global default 1.0")
     return 1.0
 
 
@@ -898,20 +900,10 @@ async def predict(req: PredictRequest):
         # 5. Spatial features
         spatial = fetch_spatial_features(bq, req.lat, req.lon)
 
-        # 6. Neighborhood encoding — normalize slug, try district fallback, then global mean
-        enc_dict       = _cache["encoding"]
-        district_means = _cache.get("district_means", {})
-        global_mean    = float(enc_dict.get("GLOBAL_MEAN", 0.8512489971975457))
-
-        if chosen_slug in enc_dict:
-            nb_encoded = float(enc_dict[chosen_slug])
-            print(f"[encoding] HIT: '{chosen_slug}' -> {nb_encoded:.6f}")
-        elif region_id in district_means:
-            nb_encoded = float(district_means[region_id])
-            print(f"[encoding] MISS '{chosen_slug}' -> fallback to district {region_id} mean -> {nb_encoded:.6f}")
-        else:
-            nb_encoded = global_mean
-            print(f"[encoding] MISS '{chosen_slug}' -> fallback to global mean -> {nb_encoded:.6f}")
+        # 6. Neighborhood encoding — Fetch directly from BigQuery
+        avg_quality_ratio = fetch_neighborhood_avg_ratio(bq, region_id, chosen_slug)
+        nb_encoded = avg_quality_ratio
+        print(f"[encoding] BigQuery avg_quality_ratio for '{chosen_slug}' -> {nb_encoded:.6f}")
 
         # 7. Macro V2 inference — log-differential math
         macro_feat = build_macro_features(macro_row)
@@ -955,8 +947,7 @@ async def predict(req: PredictRequest):
             "final_total_price": round(final_total_price, 2),
         }, ensure_ascii=False))
 
-        # 11. Historical Neighborhood Average Quality Ratio from BigQuery
-        avg_quality_ratio = fetch_neighborhood_avg_ratio(bq, region_id, chosen_slug)
+        # 11. Historical Neighborhood Average Quality Ratio (Already fetched)
         neighborhood_average_price = base_price_per_sqm * avg_quality_ratio
         print(f"[neighborhood_average_price] region={region_id} slug='{chosen_slug}' base_price={base_price_per_sqm:.4f} * avg_ratio={avg_quality_ratio:.4f} -> {neighborhood_average_price:.4f} M Toman/m²")
 
