@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, TrendingUp, Cpu, AlertTriangle } from "lucide-react";
+import { MapPin, TrendingUp, Cpu } from "lucide-react";
 
 interface NavbarProps {
   usdRate: number | null;
@@ -10,10 +10,10 @@ export default function Navbar({ usdRate }: NavbarProps) {
   return (
     <nav
       style={{
-        borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-        background: "rgba(8, 12, 20, 0.85)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
+        borderBottom: "1px solid rgba(255, 255, 255, 0.07)",
+        background: "rgba(15, 17, 23, 0.88)",
+        backdropFilter: "blur(28px)",
+        WebkitBackdropFilter: "blur(28px)",
         position: "sticky",
         top: 0,
         zIndex: 100,
@@ -35,14 +35,14 @@ export default function Navbar({ usdRate }: NavbarProps) {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div
             style={{
-              width: "34px",
-              height: "34px",
-              borderRadius: "10px",
+              width: "36px",
+              height: "36px",
+              borderRadius: "12px",
               background: "linear-gradient(135deg, #f97316, #ea580c)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 16px rgba(249, 115, 22, 0.4)",
+              boxShadow: "0 0 18px rgba(249, 115, 22, 0.42)",
               flexShrink: 0,
             }}
           >
@@ -51,25 +51,23 @@ export default function Navbar({ usdRate }: NavbarProps) {
           <div>
             <div
               style={{
-                fontWeight: 800,
+                fontWeight: 900,
                 fontSize: "1rem",
                 lineHeight: 1,
-                letterSpacing: "-0.02em",
-                color: "#f1f5f9",
+                color: "#edf2f7",
               }}
             >
-              Tehran<span className="gradient-text">AI</span>
+              تهران<span className="gradient-text">AI</span>
             </div>
             <div
               style={{
-                fontSize: "0.65rem",
-                color: "#475569",
-                fontWeight: 500,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
+                fontSize: "0.63rem",
+                color: "#546e8a",
+                fontWeight: 600,
+                marginTop: "3px",
               }}
             >
-              Real Estate Predictor
+              ارزیاب هوشمند ملک
             </div>
           </div>
         </div>
@@ -83,65 +81,40 @@ export default function Navbar({ usdRate }: NavbarProps) {
             background: "rgba(45, 212, 191, 0.08)",
             border: "1px solid rgba(45, 212, 191, 0.2)",
             borderRadius: "100px",
-            padding: "6px 14px",
+            padding: "6px 16px",
           }}
         >
           <Cpu size={13} color="#2dd4bf" />
-          <span style={{ fontSize: "0.72rem", color: "#2dd4bf", fontWeight: 600 }}>
+          <span style={{ fontSize: "0.72rem", color: "#2dd4bf", fontWeight: 700 }}>
             XGBoost · BigQuery Spatial
           </span>
         </div>
 
-        {/* USD Rate indicator */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              background: "rgba(255, 255, 255, 0.04)",
-              border: "1px solid rgba(255, 255, 255, 0.06)",
-              borderRadius: "8px",
-              padding: "6px 12px",
-            }}
-          >
-            <TrendingUp size={13} color="#f97316" />
-            <span
-              style={{
-                fontSize: "0.72rem",
-                color: "#94a3b8",
-                fontWeight: 500,
-              }}
-            >
-              USD:&nbsp;
+        {/* USD Rate badge */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "7px",
+            background: "rgba(249,115,22,0.07)",
+            border: "1px solid rgba(249,115,22,0.2)",
+            borderRadius: "12px",
+            padding: "7px 14px",
+          }}
+        >
+          <TrendingUp size={13} color="#f97316" />
+          <span style={{ fontSize: "0.7rem", color: "#9ab0c7", fontWeight: 500 }}>
+            دلار آزاد:
+          </span>
+          {usdRate ? (
+            <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#f97316" }}>
+              {usdRate.toLocaleString("fa-IR")} تومان
             </span>
-            {usdRate ? (
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
-                  color: "#f97316",
-                }}
-              >
-                {usdRate.toLocaleString("en-US")} Tomans
-              </span>
-            ) : (
-              <span
-                style={{
-                  width: "60px",
-                  height: "12px",
-                  display: "inline-block",
-                  borderRadius: "4px",
-                }}
-                className="skeleton"
-              />
-            )}
-          </div>
-
-          {!usdRate && (
-            <div title="Fetching live rate..." style={{ color: "#475569" }}>
-              <AlertTriangle size={14} />
-            </div>
+          ) : (
+            <span
+              style={{ width: "72px", height: "12px", display: "inline-block", borderRadius: "6px" }}
+              className="skeleton"
+            />
           )}
         </div>
       </div>

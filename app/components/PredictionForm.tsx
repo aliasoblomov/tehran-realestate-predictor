@@ -9,13 +9,11 @@ import {
   Calendar,
   Layers,
   CheckSquare,
-  ChevronLeft,
-  Loader2,
+  ChevronRight,
   Zap,
   MapPin,
-  Check,
 } from "lucide-react";
-import { getTopCandidates, CandidateNeighborhood } from "../utils/neighborhoods";
+import { getTopCandidates } from "../utils/neighborhoods";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface FormValues {
@@ -28,6 +26,7 @@ export interface FormValues {
   has_elevator: boolean;
   has_parking: boolean;
   is_villa: boolean;
+  has_storage: boolean; // UI placebo — not sent to model
 }
 
 interface PredictionFormProps {
@@ -38,20 +37,19 @@ interface PredictionFormProps {
 
 // ─── Step Definitions ─────────────────────────────────────────────────────────
 type Step = "type" | "area" | "rooms" | "age" | "floors" | "amenities" | "review";
-
 const STEPS: Step[] = ["type", "area", "rooms", "age", "floors", "amenities", "review"];
 
 const STEP_META: Record<Step, { label: string; icon: React.ReactNode }> = {
-  type:      { label: "Property Type", icon: <Home size={14} /> },
-  area:      { label: "Area (m²)",     icon: <Ruler size={14} /> },
-  rooms:     { label: "Bedrooms",      icon: <BedDouble size={14} /> },
-  age:       { label: "Building Age",  icon: <Calendar size={14} /> },
-  floors:    { label: "Floor Details", icon: <Layers size={14} /> },
-  amenities: { label: "Amenities",     icon: <CheckSquare size={14} /> },
-  review:    { label: "Review",        icon: <Zap size={14} /> },
+  type:      { label: "نوع ملک",      icon: <Home size={14} /> },
+  area:      { label: "متراژ",         icon: <Ruler size={14} /> },
+  rooms:     { label: "اتاق‌ها",        icon: <BedDouble size={14} /> },
+  age:       { label: "سال ساخت",      icon: <Calendar size={14} /> },
+  floors:    { label: "طبقه",          icon: <Layers size={14} /> },
+  amenities: { label: "امکانات",       icon: <CheckSquare size={14} /> },
+  review:    { label: "بررسی نهایی",   icon: <Zap size={14} /> },
 };
 
-// ─── Default Values ────────────────────────────────────────────────────────────
+// ─── Defaults ─────────────────────────────────────────────────────────────────
 const DEFAULT: FormValues = {
   area: 100,
   building_age: 10,
@@ -62,6 +60,7 @@ const DEFAULT: FormValues = {
   has_elevator: true,
   has_parking: true,
   is_villa: false,
+  has_storage: false,
 };
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
@@ -71,7 +70,7 @@ function Spinner() {
       style={{
         width: "18px",
         height: "18px",
-        border: "2px solid rgba(255,255,255,0.2)",
+        border: "2px solid rgba(255,255,255,0.22)",
         borderTopColor: "#fff",
         borderRadius: "50%",
         flexShrink: 0,
@@ -84,14 +83,14 @@ function Spinner() {
 // ─── Step Progress Bar ────────────────────────────────────────────────────────
 function StepBar({ current }: { current: Step }) {
   const idx = STEPS.indexOf(current);
-  const pct = ((idx) / (STEPS.length - 1)) * 100;
+  const pct = (idx / (STEPS.length - 1)) * 100;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "0.62rem", color: "#475569", fontWeight: 600 }}>
-          Step {idx + 1} of {STEPS.length}
+        <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>
+          مرحله {idx + 1} از {STEPS.length}
         </span>
-        <span style={{ fontSize: "0.62rem", color: "#64748b" }}>
+        <span style={{ fontSize: "0.6rem", color: "#546e8a" }}>
           {STEP_META[current].label}
         </span>
       </div>
@@ -118,63 +117,56 @@ function StepBar({ current }: { current: Step }) {
 }
 
 // ─── Option Card ──────────────────────────────────────────────────────────────
-interface OptionCardProps {
-  icon: React.ReactNode;
-  label: string;
-  sub?: string;
-  selected: boolean;
-  onClick: () => void;
-  id?: string;
-}
-
-function OptionCard({ icon, label, sub, selected, onClick, id }: OptionCardProps) {
+function OptionCard({
+  icon, label, sub, selected, onClick, id,
+}: {
+  icon: React.ReactNode; label: string; sub?: string;
+  selected: boolean; onClick: () => void; id?: string;
+}) {
   return (
     <button
       id={id}
       onClick={onClick}
       style={{
         background: selected
-          ? "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(249,115,22,0.08))"
-          : "rgba(255,255,255,0.02)",
+          ? "linear-gradient(135deg, rgba(245,158,11,0.14), rgba(249,115,22,0.08))"
+          : "rgba(255,255,255,0.025)",
         border: selected
-          ? "1.5px solid rgba(245,158,11,0.5)"
-          : "1px solid rgba(255,255,255,0.06)",
-        borderRadius: "14px",
-        padding: "18px 14px",
+          ? "1.5px solid rgba(245,158,11,0.55)"
+          : "1px solid rgba(255,255,255,0.07)",
+        borderRadius: "16px",
+        padding: "20px 14px",
         cursor: "pointer",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: "8px",
+        gap: "10px",
         flex: 1,
         transition: "all 0.2s ease",
-        color: selected ? "#f59e0b" : "#64748b",
-        boxShadow: selected ? "0 0 16px rgba(245,158,11,0.15)" : "none",
-        transform: selected ? "translateY(-1px)" : "none",
+        boxShadow: selected ? "0 0 18px rgba(245,158,11,0.18)" : "none",
+        transform: selected ? "translateY(-2px)" : "none",
       }}
     >
       <div
         style={{
-          width: "38px",
-          height: "38px",
-          borderRadius: "10px",
-          background: selected ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.04)",
+          width: "42px",
+          height: "42px",
+          borderRadius: "12px",
+          background: selected ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.05)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: selected ? "#f59e0b" : "#475569",
+          color: selected ? "#f59e0b" : "#546e8a",
         }}
       >
         {icon}
       </div>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: selected ? "#f59e0b" : "#94a3b8" }}>
+        <div style={{ fontSize: "0.85rem", fontWeight: 800, color: selected ? "#f59e0b" : "#9ab0c7" }}>
           {label}
         </div>
         {sub && (
-          <div style={{ fontSize: "0.62rem", color: "#475569", marginTop: "2px" }}>
-            {sub}
-          </div>
+          <div style={{ fontSize: "0.62rem", color: "#546e8a", marginTop: "3px" }}>{sub}</div>
         )}
       </div>
     </button>
@@ -188,17 +180,17 @@ function Pill({ label, selected, onClick, id }: { label: string; selected: boole
       id={id}
       onClick={onClick}
       style={{
-        background: selected ? "rgba(249,115,22,0.15)" : "rgba(255,255,255,0.03)",
-        border: selected ? "1.5px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.07)",
+        background: selected ? "rgba(249,115,22,0.16)" : "rgba(255,255,255,0.03)",
+        border: selected ? "1.5px solid rgba(249,115,22,0.55)" : "1px solid rgba(255,255,255,0.08)",
         borderRadius: "100px",
-        padding: "8px 18px",
+        padding: "9px 20px",
         cursor: "pointer",
-        fontSize: "0.82rem",
-        fontWeight: 700,
+        fontSize: "0.85rem",
+        fontWeight: 800,
         color: selected ? "#f97316" : "#64748b",
         transition: "all 0.18s ease",
-        transform: selected ? "scale(1.05)" : "scale(1)",
-        boxShadow: selected ? "0 0 12px rgba(249,115,22,0.2)" : "none",
+        transform: selected ? "scale(1.06)" : "scale(1)",
+        boxShadow: selected ? "0 0 14px rgba(249,115,22,0.22)" : "none",
       }}
     >
       {label}
@@ -206,68 +198,70 @@ function Pill({ label, selected, onClick, id }: { label: string; selected: boole
   );
 }
 
-// ─── Toggle Amenity ───────────────────────────────────────────────────────────
+// ─── Amenity Toggle (pill-shaped, full row) ───────────────────────────────────
 function AmenityToggle({
-  icon,
-  label,
-  sub,
-  value,
-  onChange,
-  id,
+  icon, label, sub, value, onChange, id, color = "green",
 }: {
-  icon: React.ReactNode;
-  label: string;
-  sub?: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  id?: string;
+  icon: React.ReactNode; label: string; sub?: string;
+  value: boolean; onChange: (v: boolean) => void; id?: string;
+  color?: "green" | "teal" | "blue";
 }) {
+  const colors = {
+    green: { bg: "rgba(34,197,94,0.06)", border: "rgba(34,197,94,0.28)", iconBg: "rgba(34,197,94,0.12)", iconColor: "#22c55e", textColor: "#22c55e" },
+    teal:  { bg: "rgba(45,212,191,0.06)", border: "rgba(45,212,191,0.28)", iconBg: "rgba(45,212,191,0.12)", iconColor: "#2dd4bf", textColor: "#2dd4bf" },
+    blue:  { bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.28)", iconBg: "rgba(96,165,250,0.12)", iconColor: "#60a5fa", textColor: "#60a5fa" },
+  };
+  const c = colors[color];
+
   return (
     <button
       id={id}
       onClick={() => onChange(!value)}
       style={{
-        background: value ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.02)",
-        border: value ? "1.5px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.06)",
-        borderRadius: "12px",
-        padding: "14px",
+        background: value ? c.bg : "rgba(255,255,255,0.025)",
+        border: value ? `1.5px solid ${c.border}` : "1px solid rgba(255,255,255,0.07)",
+        borderRadius: "14px",
+        padding: "14px 16px",
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: "10px",
+        gap: "12px",
         transition: "all 0.2s ease",
         width: "100%",
+        boxShadow: value ? `0 0 14px ${c.border}40` : "none",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <div
           style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
-            background: value ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+            width: "34px",
+            height: "34px",
+            borderRadius: "10px",
+            background: value ? c.iconBg : "rgba(255,255,255,0.05)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: value ? "#22c55e" : "#475569",
+            color: value ? c.iconColor : "#546e8a",
+            flexShrink: 0,
           }}
         >
           {icon}
         </div>
-        <div style={{ textAlign: "left" }}>
-          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: value ? "#22c55e" : "#94a3b8" }}>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: "0.82rem", fontWeight: 800, color: value ? c.textColor : "#9ab0c7" }}>
             {label}
           </div>
-          {sub && <div style={{ fontSize: "0.62rem", color: "#475569" }}>{sub}</div>}
+          {sub && <div style={{ fontSize: "0.62rem", color: "#546e8a", marginTop: "2px" }}>{sub}</div>}
         </div>
       </div>
-      {/* Animated toggle */}
+      {/* Pill toggle */}
       <div
         className={`toggle-track ${value ? "active" : ""}`}
-        style={{ width: "36px", height: "20px" }}
+        aria-checked={value}
+        role="switch"
       >
-        <div className="toggle-thumb" style={{ width: "12px", height: "12px" }} />
+        <div className="toggle-thumb" />
       </div>
     </button>
   );
@@ -275,46 +269,27 @@ function AmenityToggle({
 
 // ─── Number Stepper ───────────────────────────────────────────────────────────
 function Stepper({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-  id,
+  label, value, min, max, onChange, id,
 }: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-  id?: string;
+  label: string; value: number; min: number; max: number;
+  onChange: (v: number) => void; id?: string;
 }) {
+  const atMax = value >= max;
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "6px",
-        flex: 1,
-      }}
-    >
-      <span style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: 600 }}>{label}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+      <span style={{ fontSize: "0.62rem", color: "#64748b", fontWeight: 700, textAlign: "center" }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <button
           onClick={() => onChange(Math.max(min, value - 1))}
           style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
+            width: "34px", height: "34px",
+            borderRadius: "10px",
             background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            color: "#94a3b8",
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "#9ab0c7",
             cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "1.1rem",
-            fontWeight: 700,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "1.2rem", fontWeight: 700,
           }}
         >
           −
@@ -324,29 +299,24 @@ function Stepper({
           style={{
             flex: 1,
             textAlign: "center",
-            fontWeight: 800,
-            fontSize: "1.1rem",
-            color: "#f1f5f9",
-            letterSpacing: "-0.02em",
+            fontWeight: 900,
+            fontSize: "1.15rem",
+            color: atMax ? "#f59e0b" : "#edf2f7",
           }}
         >
-          {value}
+          {atMax ? `${max}+` : value}
         </div>
         <button
           onClick={() => onChange(Math.min(max, value + 1))}
           style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
+            width: "34px", height: "34px",
+            borderRadius: "10px",
             background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            color: "#94a3b8",
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "#9ab0c7",
             cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "1.1rem",
-            fontWeight: 700,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "1.2rem", fontWeight: 700,
           }}
         >
           +
@@ -356,7 +326,7 @@ function Stepper({
   );
 }
 
-// ─── Review Item ──────────────────────────────────────────────────────────────
+// ─── Review Row ───────────────────────────────────────────────────────────────
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div
@@ -368,8 +338,8 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
         borderBottom: "1px solid rgba(255,255,255,0.04)",
       }}
     >
-      <span style={{ fontSize: "0.72rem", color: "#64748b" }}>{label}</span>
-      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#94a3b8" }}>{value}</span>
+      <span style={{ fontSize: "0.72rem", color: "#546e8a" }}>{label}</span>
+      <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#9ab0c7" }}>{value}</span>
     </div>
   );
 }
@@ -383,7 +353,6 @@ export default function PredictionForm({
   const [step, setStep] = useState<Step>("type");
   const [vals, setVals] = useState<FormValues>(DEFAULT);
 
-  // Compute 3 closest candidate neighborhoods
   const candidates = selectedLocation
     ? getTopCandidates(selectedLocation.lat, selectedLocation.lon, 3)
     : [];
@@ -392,11 +361,11 @@ export default function PredictionForm({
 
   useEffect(() => {
     if (candidates.length > 0) {
-      // Pre-select the closest neighborhood by default
       setSelectedSlug(candidates[0].slug);
     } else {
       setSelectedSlug("");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLocation?.lat, selectedLocation?.lon]);
 
   const set = useCallback(<K extends keyof FormValues>(key: K, value: FormValues[K]) => {
@@ -415,79 +384,82 @@ export default function PredictionForm({
 
   const canProceed = !!selectedLocation;
 
-  // Age segmented options
   const AGE_OPTIONS = [
-    { label: "Brand New", value: 0 },
-    { label: "1–5 yr", value: 3 },
-    { label: "5–15 yr", value: 10 },
-    { label: "15+ yr", value: 20 },
+    { label: "نوساز", value: 0 },
+    { label: "۱ تا ۵ سال", value: 3 },
+    { label: "۵ تا ۱۵ سال", value: 10 },
+    { label: "بالای ۱۵ سال", value: 20 },
   ];
 
   const stepContent: Record<Step, React.ReactNode> = {
-    // ── Step 1: Property Type ────────────────────────────────────────────────
+    // ── Step 1: نوع ملک ─────────────────────────────────────────────────────
     type: (
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
-          What type of property?
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
+          نوع ملک را انتخاب کنید
         </div>
         <div style={{ display: "flex", gap: "10px" }}>
           <OptionCard
             id="type-apartment"
             icon={<Building2 size={22} />}
-            label="Apartment"
-            sub="Multi-unit building"
+            label="آپارتمان"
+            sub="ساختمان چندواحدی"
             selected={!vals.is_villa}
-            onClick={() => { set("is_villa", false); setTimeout(goNext, 180); }}
+            onClick={() => { set("is_villa", false); setTimeout(goNext, 200); }}
           />
           <OptionCard
             id="type-villa"
             icon={<Home size={22} />}
-            label="Villa"
-            sub="Stand-alone house"
+            label="ویلا"
+            sub="خانه مستقل"
             selected={vals.is_villa}
-            onClick={() => { set("is_villa", true); setTimeout(goNext, 180); }}
+            onClick={() => { set("is_villa", true); setTimeout(goNext, 200); }}
           />
         </div>
       </div>
     ),
 
-    // ── Step 2: Area ─────────────────────────────────────────────────────────
+    // ── Step 2: متراژ ────────────────────────────────────────────────────────
     area: (
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
-          What's the area?
+        <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
+          متراژ ملک چند متر است؟
         </div>
         <div
           style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: "14px",
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "16px",
             padding: "20px",
             display: "flex",
             flexDirection: "column",
-            gap: "12px",
+            gap: "14px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", justifyContent: "center" }}>
             <input
               id="area-input"
               type="number"
-              value={vals.area}
+              value={vals.area === 0 ? "" : vals.area}
               min={20}
               max={1000}
-              onChange={(e) => set("area", Number(e.target.value))}
+              onFocus={(e) => { if (Number(e.target.value) === 0 || e.target.value === "0") { set("area", 0 as unknown as number); e.target.select(); } }}
+              onChange={(e) => {
+                const n = e.target.value === "" ? 0 : Number(e.target.value);
+                set("area", n);
+              }}
               className="form-input"
               style={{
-                fontSize: "2rem",
+                fontSize: "2.2rem",
                 fontWeight: 900,
                 textAlign: "center",
-                letterSpacing: "-0.03em",
                 padding: "8px 12px",
-                maxWidth: "160px",
+                maxWidth: "150px",
                 color: "#f59e0b",
+                direction: "ltr",
               }}
             />
-            <span style={{ fontSize: "1rem", color: "#64748b", fontWeight: 600 }}>m²</span>
+            <span style={{ fontSize: "1rem", color: "#546e8a", fontWeight: 700 }}>متر مربع</span>
           </div>
           <input
             id="area-slider"
@@ -495,9 +467,9 @@ export default function PredictionForm({
             min={20}
             max={1000}
             step={5}
-            value={vals.area}
+            value={vals.area || 20}
             onChange={(e) => set("area", Number(e.target.value))}
-            style={{ width: "100%", accentColor: "#f59e0b", cursor: "pointer", height: "4px" }}
+            style={{ width: "100%", cursor: "pointer" }}
           />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             {[50, 100, 150, 200, 300].map((v) => (
@@ -506,13 +478,13 @@ export default function PredictionForm({
                 id={`area-quick-${v}`}
                 onClick={() => set("area", v)}
                 style={{
-                  background: vals.area === v ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.03)",
-                  border: vals.area === v ? "1px solid rgba(245,158,11,0.4)" : "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: "8px",
-                  padding: "4px 8px",
+                  background: vals.area === v ? "rgba(245,158,11,0.14)" : "rgba(255,255,255,0.04)",
+                  border: vals.area === v ? "1px solid rgba(245,158,11,0.45)" : "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: "10px",
+                  padding: "5px 8px",
                   cursor: "pointer",
-                  fontSize: "0.65rem",
-                  fontWeight: 600,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
                   color: vals.area === v ? "#f59e0b" : "#64748b",
                 }}
               >
@@ -524,50 +496,48 @@ export default function PredictionForm({
       </div>
     ),
 
-    // ── Step 3: Rooms ─────────────────────────────────────────────────────────
+    // ── Step 3: اتاق ──────────────────────────────────────────────────────────
     rooms: (
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
-          How many bedrooms?
+        <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
+          تعداد اتاق خواب چند تاست؟
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {[1, 2, 3, 4, 5].map((n) => (
             <Pill
               key={n}
               id={`rooms-${n}`}
-              label={n === 5 ? "5+" : String(n)}
+              label={n === 5 ? "۵+" : String(n)}
               selected={vals.rooms_count === n}
-              onClick={() => { set("rooms_count", n); setTimeout(goNext, 180); }}
+              onClick={() => { set("rooms_count", n); setTimeout(goNext, 200); }}
             />
           ))}
         </div>
       </div>
     ),
 
-    // ── Step 4: Age ───────────────────────────────────────────────────────────
+    // ── Step 4: سن بنا ────────────────────────────────────────────────────────
     age: (
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
-          How old is the building?
+        <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
+          سن بنا چقدر است؟
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           {AGE_OPTIONS.map((opt) => (
             <button
               key={opt.label}
-              id={`age-${opt.label.toLowerCase().replace(/\s+/g, "-")}`}
-              onClick={() => { set("building_age", opt.value); setTimeout(goNext, 180); }}
+              id={`age-${opt.value}`}
+              onClick={() => { set("building_age", opt.value); setTimeout(goNext, 200); }}
               style={{
-                background: vals.building_age === opt.value
-                  ? "rgba(245,158,11,0.1)"
-                  : "rgba(255,255,255,0.02)",
+                background: vals.building_age === opt.value ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.025)",
                 border: vals.building_age === opt.value
-                  ? "1.5px solid rgba(245,158,11,0.45)"
-                  : "1px solid rgba(255,255,255,0.06)",
-                borderRadius: "12px",
-                padding: "14px",
+                  ? "1.5px solid rgba(245,158,11,0.5)"
+                  : "1px solid rgba(255,255,255,0.07)",
+                borderRadius: "14px",
+                padding: "16px",
                 cursor: "pointer",
-                fontSize: "0.82rem",
-                fontWeight: 700,
+                fontSize: "0.85rem",
+                fontWeight: 800,
                 color: vals.building_age === opt.value ? "#f59e0b" : "#64748b",
                 transition: "all 0.18s ease",
               }}
@@ -577,49 +547,50 @@ export default function PredictionForm({
           ))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "0.65rem", color: "#475569" }}>Or enter exact:</span>
+          <span style={{ fontSize: "0.65rem", color: "#546e8a" }}>یا دقیق وارد کنید:</span>
           <input
             id="age-exact"
             type="number"
-            value={vals.building_age}
+            value={vals.building_age === 0 ? "" : vals.building_age}
             min={0}
             max={80}
-            onChange={(e) => set("building_age", Number(e.target.value))}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => set("building_age", e.target.value === "" ? 0 : Number(e.target.value))}
             className="form-input"
-            style={{ maxWidth: "80px", padding: "6px 10px", fontSize: "0.85rem" }}
+            style={{ maxWidth: "80px", padding: "6px 10px", fontSize: "0.88rem", direction: "ltr", textAlign: "center" }}
           />
-          <span style={{ fontSize: "0.65rem", color: "#475569" }}>years</span>
+          <span style={{ fontSize: "0.65rem", color: "#546e8a" }}>سال</span>
         </div>
       </div>
     ),
 
-    // ── Step 5: Floors ────────────────────────────────────────────────────────
+    // ── Step 5: طبقه ──────────────────────────────────────────────────────────
     floors: (
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
-          Floor details
+        <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
+          جزئیات طبقه‌بندی
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
+        <div style={{ display: "flex", gap: "10px" }}>
           <Stepper
-            label="Total Floors"
+            label="کل طبقات"
             id="total-floors"
             value={vals.total_floors}
             min={1}
-            max={40}
+            max={25}
             onChange={(v) => set("total_floors", v)}
           />
-          <div style={{ width: "1px", background: "rgba(255,255,255,0.05)", alignSelf: "stretch" }} />
+          <div style={{ width: "1px", background: "rgba(255,255,255,0.06)", alignSelf: "stretch" }} />
           <Stepper
-            label="Your Floor"
+            label="طبقه واحد"
             id="floor-num"
             value={vals.floor_num}
             min={0}
             max={vals.total_floors}
             onChange={(v) => set("floor_num", Math.min(v, vals.total_floors))}
           />
-          <div style={{ width: "1px", background: "rgba(255,255,255,0.05)", alignSelf: "stretch" }} />
+          <div style={{ width: "1px", background: "rgba(255,255,255,0.06)", alignSelf: "stretch" }} />
           <Stepper
-            label="Units/Floor"
+            label="واحد/طبقه"
             id="unit-per-floor"
             value={vals.unit_per_floor}
             min={1}
@@ -630,77 +601,84 @@ export default function PredictionForm({
       </div>
     ),
 
-    // ── Step 6: Amenities ─────────────────────────────────────────────────────
+    // ── Step 6: امکانات ───────────────────────────────────────────────────────
     amenities: (
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
-          Amenities
+        <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
+          امکانات ملک
         </div>
         <AmenityToggle
           id="toggle-elevator"
-          icon={<Layers size={15} />}
-          label="Elevator"
-          sub="Impacts floor premium significantly"
+          icon={<Layers size={16} />}
+          label="آسانسور"
+          sub="تأثیر زیادی بر ارزش طبقات بالا دارد"
           value={vals.has_elevator}
           onChange={(v) => set("has_elevator", v)}
+          color="green"
         />
         <AmenityToggle
           id="toggle-parking"
           icon={
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="2" y="7" width="20" height="15" rx="2" />
               <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
             </svg>
           }
-          label="Parking"
-          sub="Dedicated parking spot"
+          label="پارکینگ"
+          sub="جای پارک اختصاصی"
           value={vals.has_parking}
           onChange={(v) => set("has_parking", v)}
+          color="teal"
+        />
+        <AmenityToggle
+          id="toggle-storage"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M5 8h14M5 8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2M5 8l1 12h12l1-12" />
+            </svg>
+          }
+          label="انباری"
+          sub="فضای ذخیره‌سازی جداگانه"
+          value={vals.has_storage}
+          onChange={(v) => set("has_storage", v)}
+          color="blue"
         />
       </div>
     ),
 
-    // ── Step 7: Review ────────────────────────────────────────────────────────
+    // ── Step 7: بررسی نهایی ───────────────────────────────────────────────────
     review: (
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 800, color: "#f1f5f9" }}>
-          Ready to Valuate
+        <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
+          بررسی و ارزیابی
         </div>
 
-        {/* ── Neighborhood Disambiguation (Top 3 Candidates) ── */}
+        {/* Neighborhood selection */}
         {selectedLocation && candidates.length > 0 && (
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               gap: "8px",
-              background: "rgba(249, 115, 22, 0.06)",
-              border: "1.5px solid rgba(249, 115, 22, 0.3)",
-              borderRadius: "12px",
+              background: "rgba(249,115,22,0.06)",
+              border: "1.5px solid rgba(249,115,22,0.3)",
+              borderRadius: "14px",
               padding: "12px 14px",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <MapPin size={13} color="#f97316" />
-                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#f97316" }}>
-                  Select Neighborhood (3 Closest)
+                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#f97316" }}>
+                  محله را انتخاب کنید (۳ نزدیک‌ترین)
                 </span>
               </div>
-              <span style={{ fontSize: "0.62rem", color: "#94a3b8" }}>
-                Coordinates match
-              </span>
+              <span style={{ fontSize: "0.6rem", color: "#9ab0c7" }}>براساس مختصات</span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {candidates.map((c, idx) => {
-                const isSelected = (selectedSlug ? selectedSlug === c.slug : idx === 0);
+                const isSelected = selectedSlug ? selectedSlug === c.slug : idx === 0;
                 return (
                   <button
                     key={c.slug}
@@ -710,61 +688,54 @@ export default function PredictionForm({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      padding: "8px 12px",
-                      borderRadius: "8px",
+                      padding: "9px 12px",
+                      borderRadius: "10px",
                       background: isSelected
-                        ? "linear-gradient(135deg, rgba(249,115,22,0.2), rgba(245,158,11,0.12))"
+                        ? "linear-gradient(135deg, rgba(249,115,22,0.2), rgba(245,158,11,0.1))"
                         : "rgba(255,255,255,0.03)",
                       border: isSelected
                         ? "1.5px solid #f97316"
-                        : "1px solid rgba(255,255,255,0.06)",
+                        : "1px solid rgba(255,255,255,0.07)",
                       cursor: "pointer",
-                      textAlign: "left",
                       transition: "all 0.15s ease",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
                       <div
                         style={{
                           width: "14px",
                           height: "14px",
                           borderRadius: "50%",
-                          border: isSelected ? "4px solid #f97316" : "1.5px solid #64748b",
+                          border: isSelected ? "4px solid #f97316" : "1.5px solid #546e8a",
                           background: isSelected ? "#fff" : "transparent",
                           flexShrink: 0,
                         }}
                       />
                       <div>
-                        <span
-                          style={{
-                            fontSize: "0.78rem",
-                            fontWeight: isSelected ? 700 : 500,
-                            color: isSelected ? "#f8fafc" : "#94a3b8",
-                          }}
-                        >
+                        <span style={{ fontSize: "0.8rem", fontWeight: isSelected ? 800 : 500, color: isSelected ? "#f8fafc" : "#9ab0c7" }}>
                           {c.name}
                         </span>
                         {idx === 0 && (
                           <span
                             style={{
-                              marginLeft: "6px",
+                              marginRight: "6px",
                               fontSize: "0.58rem",
-                              fontWeight: 700,
+                              fontWeight: 800,
                               background: "rgba(34,197,94,0.15)",
                               color: "#22c55e",
                               border: "1px solid rgba(34,197,94,0.3)",
-                              borderRadius: "4px",
-                              padding: "1px 5px",
+                              borderRadius: "100px",
+                              padding: "1px 7px",
                             }}
                           >
-                            Closest
+                            نزدیک‌ترین
                           </span>
                         )}
                       </div>
                     </div>
-                    <div style={{ textAlign: "right", fontSize: "0.65rem", color: isSelected ? "#f97316" : "#64748b" }}>
-                      <span>{c.distance_km} km</span>
-                      <span style={{ marginLeft: "4px", opacity: 0.7 }}>· Region {c.region_id}</span>
+                    <div style={{ textAlign: "left", fontSize: "0.62rem", color: isSelected ? "#f97316" : "#546e8a" }}>
+                      <span style={{ direction: "ltr", display: "inline-block" }}>{c.distance_km} km</span>
+                      <span style={{ marginRight: "4px", opacity: 0.7 }}>· منطقه {c.region_id}</span>
                     </div>
                   </button>
                 );
@@ -773,35 +744,38 @@ export default function PredictionForm({
           </div>
         )}
 
+        {/* Summary */}
         <div
           style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.05)",
-            borderRadius: "12px",
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "14px",
             padding: "14px",
           }}
         >
-          <ReviewRow label="Type"         value={vals.is_villa ? "Villa" : "Apartment"} />
-          <ReviewRow label="Area"         value={`${vals.area} m²`} />
-          <ReviewRow label="Bedrooms"     value={String(vals.rooms_count)} />
-          <ReviewRow label="Building Age" value={`${vals.building_age} yr`} />
-          <ReviewRow label="Floor"        value={`${vals.floor_num} / ${vals.total_floors}`} />
-          <ReviewRow label="Units/Floor"  value={String(vals.unit_per_floor)} />
-          <ReviewRow label="Elevator"     value={vals.has_elevator ? "✓ Yes" : "✗ No"} />
-          <ReviewRow label="Parking"      value={vals.has_parking ? "✓ Yes" : "✗ No"} />
+          <ReviewRow label="نوع ملک"     value={vals.is_villa ? "ویلا" : "آپارتمان"} />
+          <ReviewRow label="متراژ"        value={`${vals.area} م²`} />
+          <ReviewRow label="اتاق خواب"    value={`${vals.rooms_count} اتاق`} />
+          <ReviewRow label="سن بنا"       value={`${vals.building_age} سال`} />
+          <ReviewRow label="طبقه"         value={`${vals.floor_num} از ${vals.total_floors}`} />
+          <ReviewRow label="واحد/طبقه"   value={String(vals.unit_per_floor)} />
+          <ReviewRow label="آسانسور"      value={vals.has_elevator ? "✓ دارد" : "✗ ندارد"} />
+          <ReviewRow label="پارکینگ"      value={vals.has_parking ? "✓ دارد" : "✗ ندارد"} />
+          <ReviewRow label="انباری"       value={vals.has_storage ? "✓ دارد" : "✗ ندارد"} />
         </div>
+
         {selectedLocation && (
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              fontSize: "0.68rem",
+              fontSize: "0.65rem",
               color: "#2dd4bf",
             }}
           >
             <MapPin size={11} />
-            <span>
+            <span style={{ direction: "ltr" }}>
               {selectedLocation.lat.toFixed(5)}, {selectedLocation.lon.toFixed(5)}
             </span>
           </div>
@@ -812,19 +786,10 @@ export default function PredictionForm({
 
   const isReview = step === "review";
   const isFirst  = step === "type";
-
   const activeSlug = selectedSlug || (candidates.length > 0 ? candidates[0].slug : undefined);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "14px",
-        height: "100%",
-      }}
-    >
-      {/* Progress */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "14px", height: "100%" }}>
       <StepBar current={step} />
 
       {/* Location guard */}
@@ -832,18 +797,19 @@ export default function PredictionForm({
         <div
           style={{
             background: "rgba(245,158,11,0.06)",
-            border: "1px solid rgba(245,158,11,0.2)",
-            borderRadius: "10px",
-            padding: "10px 12px",
+            border: "1px solid rgba(245,158,11,0.22)",
+            borderRadius: "12px",
+            padding: "10px 14px",
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            fontSize: "0.72rem",
+            fontSize: "0.75rem",
             color: "#f59e0b",
+            fontWeight: 600,
           }}
         >
-          <MapPin size={13} color="#f59e0b" />
-          Drop a pin on the map first
+          <MapPin size={14} color="#f59e0b" />
+          ابتدا روی نقشه کلیک کنید تا موقعیت را انتخاب کنید
         </div>
       )}
 
@@ -866,20 +832,20 @@ export default function PredictionForm({
             onClick={goPrev}
             style={{
               background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: "10px",
-              padding: "11px 16px",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "12px",
+              padding: "11px 18px",
               cursor: "pointer",
               color: "#64748b",
               display: "flex",
               alignItems: "center",
               gap: "4px",
-              fontSize: "0.8rem",
-              fontWeight: 600,
+              fontSize: "0.82rem",
+              fontWeight: 700,
             }}
           >
-            <ChevronLeft size={14} />
-            Back
+            <ChevronRight size={14} />
+            بازگشت
           </button>
         )}
 
@@ -888,18 +854,18 @@ export default function PredictionForm({
             onClick={goNext}
             style={{
               flex: 1,
-              background: "rgba(249,115,22,0.08)",
-              border: "1px solid rgba(249,115,22,0.25)",
-              borderRadius: "10px",
-              padding: "11px",
+              background: "rgba(249,115,22,0.09)",
+              border: "1px solid rgba(249,115,22,0.28)",
+              borderRadius: "12px",
+              padding: "12px",
               cursor: "pointer",
               color: "#f97316",
-              fontSize: "0.82rem",
-              fontWeight: 700,
+              fontSize: "0.85rem",
+              fontWeight: 800,
               transition: "all 0.2s ease",
             }}
           >
-            Continue →
+            ادامه ←
           </button>
         )}
 
@@ -915,19 +881,19 @@ export default function PredictionForm({
               alignItems: "center",
               justifyContent: "center",
               gap: "8px",
-              fontSize: "0.88rem",
+              fontSize: "0.92rem",
               padding: "13px",
             }}
           >
             {isLoading ? (
               <>
                 <Spinner />
-                Calculating...
+                در حال محاسبه...
               </>
             ) : (
               <>
                 <Zap size={15} />
-                Get Valuation
+                دریافت ارزیابی
               </>
             )}
           </button>

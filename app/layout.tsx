@@ -1,29 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  weight: ["300", "400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Tehran Real Estate Price Predictor | AI-Powered Property Valuation",
+  title: "ارزیاب هوشمند ملک تهران | پیش‌بینی قیمت مسکن با هوش مصنوعی",
   description:
-    "Instantly predict Tehran property prices using advanced machine learning, live economic data, and spatial analysis. Drop a pin, enter details, get your estimate.",
+    "قیمت ملک در تهران را با استفاده از یادگیری ماشین، داده‌های اقتصادی زنده و تحلیل مکانی پیش‌بینی کنید. روی نقشه کلیک کنید و ارزیابی دریافت کنید.",
   keywords: [
-    "Tehran real estate",
-    "Iran property price",
-    "house price prediction",
-    "ML real estate",
-    "Tehran property valuation",
+    "قیمت ملک تهران",
+    "خرید آپارتمان تهران",
+    "ارزیابی هوشمند مسکن",
+    "Tehran real estate price prediction",
+    "ML property valuation",
   ],
   openGraph: {
-    title: "Tehran Real Estate Price Predictor",
+    title: "ارزیاب هوشمند ملک تهران",
     description:
-      "AI-powered property valuation for Tehran using spatial ML and live economic data.",
+      "ارزیابی هوشمند ملک در تهران با مدل XGBoost و داده‌های مکانی BigQuery.",
     type: "website",
   },
 };
@@ -34,20 +26,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="fa" dir="rtl">
       <head>
         <link rel="icon" href="/favicon.ico" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="antialiased">
         {/* Ambient background blobs */}
         <div
           className="ambient-blob"
           style={{
-            width: "600px",
-            height: "600px",
-            background: "rgba(249, 115, 22, 0.06)",
-            top: "-200px",
-            right: "-150px",
+            width: "700px",
+            height: "700px",
+            background: "rgba(249, 115, 22, 0.055)",
+            top: "-250px",
+            left: "-150px",
           }}
         />
         <div
@@ -55,9 +53,9 @@ export default function RootLayout({
           style={{
             width: "500px",
             height: "500px",
-            background: "rgba(45, 212, 191, 0.04)",
+            background: "rgba(45, 212, 191, 0.035)",
             bottom: "-100px",
-            left: "-150px",
+            right: "-150px",
           }}
         />
         <div className="noise-overlay" />

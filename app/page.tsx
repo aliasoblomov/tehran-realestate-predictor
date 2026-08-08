@@ -124,7 +124,7 @@ export default function Home() {
         const data = await response.json();
 
         if (!response.ok || data.detail) {
-          setError(data.detail || `Server error: ${response.status}`);
+          setError(data.detail || `خطای سرور: ${response.status}`);
           return;
         }
 
@@ -138,14 +138,15 @@ export default function Home() {
           msg.includes("Failed to fetch") || msg.includes("NetworkError");
         setError(
           isCors
-            ? `Cannot reach API at ${API_URL}. Check NEXT_PUBLIC_API_URL or ensure backend is running.`
+            ? `اتصال به API در ${API_URL} ممکن نیست. NEXT_PUBLIC_API_URL را بررسی کنید.`
             : msg
         );
       } finally {
         setIsLoading(false);
       }
     },
-    [selectedLocation]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedLocation, usdRate]
   );
 
   const handleNeighborhoodChange = useCallback(
@@ -174,20 +175,19 @@ export default function Home() {
           style={{
             fontSize: "clamp(1.4rem, 3vw, 2.2rem)",
             fontWeight: 900,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.1,
+            lineHeight: 1.15,
             margin: 0,
           }}
         >
-          Tehran Property{" "}
-          <span className="gradient-text">Price Predictor</span>
+          ارزیاب هوشمند ملک{" "}
+          <span className="gradient-text">تهران</span>
           {debugMode && (
             <span
               style={{
-                marginLeft: "12px",
+                marginRight: "12px",
                 fontSize: "0.6rem",
                 fontWeight: 700,
-                letterSpacing: "0.1em",
+                letterSpacing: "0.08em",
                 background: "rgba(34,197,94,0.12)",
                 border: "1px solid rgba(34,197,94,0.3)",
                 color: "#22c55e",
@@ -200,8 +200,8 @@ export default function Home() {
             </span>
           )}
         </h1>
-        <p style={{ color: "#64748b", fontSize: "0.83rem", marginTop: "6px", maxWidth: "520px" }}>
-          AI-powered valuation · V2 XGBoost ensemble · BigQuery spatial data · Live macro signals
+        <p style={{ color: "#546e8a", fontSize: "0.82rem", marginTop: "6px", maxWidth: "560px" }}>
+          ارزیابی قیمت ملک با مدل XGBoost V2 · داده‌های مکانی BigQuery · سیگنال‌های اقتصادی زنده
         </p>
       </div>
 

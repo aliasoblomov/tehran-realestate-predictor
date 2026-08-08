@@ -24,7 +24,6 @@ export default function MapComponent({
   const initMap = useCallback(async () => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Dynamic import to avoid SSR issues
     const leaflet = await import("leaflet");
     L = leaflet.default || leaflet;
 
@@ -40,7 +39,6 @@ export default function MapComponent({
         "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
     });
 
-    // Tehran coordinates
     const TEHRAN_CENTER: [number, number] = [35.6961, 51.4183];
 
     const map = L.map(mapRef.current, {
@@ -53,16 +51,16 @@ export default function MapComponent({
       minZoom: 11,
     });
 
-    // Dark-themed tile layer (CartoDB Dark Matter)
+    // ── CartoDB Dark Matter — premium, minimalist dark map ──
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
       {
         maxZoom: 19,
         subdomains: "abcd",
       }
     ).addTo(map);
 
-    // Custom gold pin icon
+    // ── Custom orange pin icon ──
     const goldIcon = L.divIcon({
       className: "",
       html: `
@@ -80,8 +78,8 @@ export default function MapComponent({
             background: linear-gradient(135deg, #f97316, #ea580c);
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
-            border: 3px solid rgba(255,255,255,0.9);
-            box-shadow: 0 4px 20px rgba(249, 115, 22, 0.7), 0 0 0 0 rgba(249, 115, 22, 0.6);
+            border: 3px solid rgba(255,255,255,0.92);
+            box-shadow: 0 4px 20px rgba(249, 115, 22, 0.72), 0 0 0 0 rgba(249, 115, 22, 0.6);
             animation: pulse-ring 2s infinite;
           ">
           </div>
@@ -91,7 +89,7 @@ export default function MapComponent({
             background: #f97316;
             border-radius: 50%;
             margin-top: 2px;
-            box-shadow: 0 0 8px rgba(249, 115, 22, 0.8);
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.85);
           "></div>
         </div>
       `,
@@ -100,7 +98,7 @@ export default function MapComponent({
       popupAnchor: [0, -42],
     });
 
-    // Click handler
+    // ── Click handler ──
     map.on("click", async (e: { latlng: { lat: number; lng: number } }) => {
       const { lat, lng } = e.latlng;
 
@@ -111,8 +109,8 @@ export default function MapComponent({
       const marker = L!.marker([lat, lng], { icon: goldIcon })
         .addTo(map)
         .bindPopup(
-          `<div style="text-align:center; padding: 4px 0;">
-            <div id="popup-address" style="font-size:0.85rem; font-weight: 700; color:#f97316; margin-top:6px;">Fetching address...</div>
+          `<div style="text-align:center; padding: 4px 0; font-family:'Vazirmatn',sans-serif;">
+            <div id="popup-address" style="font-size:0.85rem; font-weight: 700; color:#f97316; margin-top:6px;">در حال دریافت آدرس...</div>
           </div>`,
           { closeButton: false }
         )
@@ -125,57 +123,34 @@ export default function MapComponent({
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fa`);
         const data = await res.json();
-        
-        let addrStr = "Unknown Address";
+
+        let addrStr = "آدرس نامشخص";
         if (data.address) {
-            const parts = [];
-            if (data.address.suburb || data.address.neighbourhood) {
-                parts.push(data.address.suburb || data.address.neighbourhood);
-            }
-            if (data.address.road) {
-                parts.push(data.address.road);
-            }
-            if (parts.length > 0) {
-                addrStr = parts.join("، ");
-            } else if (data.display_name) {
-                // fallback to shorten display_name
-                addrStr = data.display_name.split(",").slice(0, 2).join("، ");
-            }
+          const parts: string[] = [];
+          if (data.address.suburb || data.address.neighbourhood) {
+            parts.push(data.address.suburb || data.address.neighbourhood);
+          }
+          if (data.address.road) {
+            parts.push(data.address.road);
+          }
+          if (parts.length > 0) {
+            addrStr = parts.join("، ");
+          } else if (data.display_name) {
+            addrStr = data.display_name.split(",").slice(0, 2).join("، ");
+          }
         }
         setAddress(addrStr);
-        
-        // Update popup if still open
-        const popupContent = `<div style="text-align:center; padding: 6px 4px;">
+
+        const popupContent = `<div style="text-align:center; padding: 6px 4px; font-family:'Vazirmatn',sans-serif;">
             <div style="font-weight:700; color:#f97316; font-size:0.85rem;">
               ${addrStr}
             </div>
           </div>`;
         marker.setPopupContent(popupContent);
-      } catch (err) {
-        // ignore
+      } catch {
+        // silently ignore address lookup errors
       }
     });
-
-    // Tehran district overlay label
-    L.marker(TEHRAN_CENTER, {
-      icon: L.divIcon({
-        className: "",
-        html: `<div style="
-          background: rgba(13, 20, 37, 0.8);
-          border: 1px solid rgba(249, 115, 22, 0.3);
-          color: #f97316;
-          font-size: 0.65rem;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          padding: 3px 8px;
-          border-radius: 4px;
-          white-space: nowrap;
-          text-transform: uppercase;
-          backdrop-filter: blur(8px);
-        ">Tehran CBD</div>`,
-        iconAnchor: [36, 10],
-      }),
-    }).addTo(map);
 
     mapInstanceRef.current = map;
   }, [onLocationSelect]);
@@ -190,7 +165,6 @@ export default function MapComponent({
     };
   }, [initMap]);
 
-  // Update marker if selectedLocation changes externally (e.g., reset)
   useEffect(() => {
     if (!selectedLocation && markerRef.current) {
       markerRef.current.remove();
@@ -206,13 +180,13 @@ export default function MapComponent({
         style={{
           width: "100%",
           height: "100%",
-          borderRadius: "16px",
+          borderRadius: "18px",
           overflow: "hidden",
         }}
         id="tehran-map"
       />
 
-      {/* Click instruction overlay (shown when no pin yet) */}
+      {/* Click instruction overlay */}
       {!selectedLocation && (
         <div
           style={{
@@ -220,60 +194,65 @@ export default function MapComponent({
             bottom: "16px",
             left: "50%",
             transform: "translateX(-50%)",
-            background: "rgba(8, 12, 20, 0.88)",
-            border: "1px solid rgba(249, 115, 22, 0.3)",
+            background: "rgba(15, 17, 23, 0.9)",
+            border: "1px solid rgba(249, 115, 22, 0.32)",
             borderRadius: "100px",
-            padding: "8px 20px",
+            padding: "9px 22px",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "9px",
             zIndex: 1000,
-            backdropFilter: "blur(12px)",
+            backdropFilter: "blur(14px)",
             pointerEvents: "none",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
           }}
         >
           <div className="map-pulse" />
           <span
             style={{
-              fontSize: "0.75rem",
-              color: "#94a3b8",
-              fontWeight: 500,
+              fontSize: "0.78rem",
+              color: "#9ab0c7",
+              fontWeight: 600,
               whiteSpace: "nowrap",
             }}
           >
-            Click anywhere on the map to drop a pin
+            روی نقشه کلیک کنید تا موقعیت را انتخاب کنید
           </span>
         </div>
       )}
 
-      {/* Coordinates badge */}
+      {/* Pinned address badge */}
       {selectedLocation && (
         <div
           style={{
             position: "absolute",
             top: "12px",
-            left: "12px",
-            background: "rgba(8, 12, 20, 0.9)",
-            border: "1px solid rgba(249, 115, 22, 0.35)",
-            borderRadius: "8px",
-            padding: "8px 12px",
+            right: "12px",
+            background: "rgba(15, 17, 23, 0.92)",
+            border: "1px solid rgba(249, 115, 22, 0.38)",
+            borderRadius: "12px",
+            padding: "9px 14px",
             zIndex: 1000,
-            backdropFilter: "blur(12px)",
+            backdropFilter: "blur(14px)",
+            maxWidth: "200px",
           }}
           className="animate-fadeUp"
         >
-          <div style={{ fontSize: "0.62rem", color: "#475569", marginBottom: "2px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            Pinned Location
+          <div style={{ fontSize: "0.58rem", color: "#546e8a", marginBottom: "3px", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            موقعیت انتخابی
           </div>
           {address ? (
-            <div style={{ fontSize: "0.85rem", color: "#f97316", fontWeight: 700, marginTop: "2px", maxWidth: "160px", lineHeight: 1.2 }}>
+            <div style={{ fontSize: "0.82rem", color: "#f97316", fontWeight: 700, lineHeight: 1.3 }}>
               {address}
             </div>
           ) : (
-            <div style={{ fontSize: "0.75rem", color: "#f97316", fontWeight: 600 }}>
-              Fetching...
+            <div style={{ fontSize: "0.72rem", color: "#546e8a", fontWeight: 600 }}>
+              در حال بارگذاری...
             </div>
           )}
+          <div style={{ fontSize: "0.6rem", color: "#546e8a", marginTop: "4px" }}>
+            {selectedLocation.lat.toFixed(4)}, {selectedLocation.lon.toFixed(4)}
+          </div>
         </div>
       )}
     </div>
