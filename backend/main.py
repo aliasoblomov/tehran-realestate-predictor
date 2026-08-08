@@ -657,6 +657,24 @@ class SpatialFeatures(BaseModel):
     urban_decay_class: int
 
 
+def fetch_neighborhood_avg_ratio(client, region_id: int, neighborhood_slug: str) -> float:
+    query = f"""
+        SELECT 
+          ROUND(AVG(target_ratio), 3) AS avg_quality_ratio
+        FROM `siavak-temp-aliz.divar_ml_data_prepration.ml_final_micro_training_data`  
+        WHERE region_id = {region_id} AND neighborhood_slug = '{neighborhood_slug}'
+    """
+    try:
+        rows = list(client.query(query).result())
+        if rows and rows[0]["avg_quality_ratio"] is not None:
+            val = float(rows[0]["avg_quality_ratio"])
+            print(f"[fetch_neighborhood_avg_ratio] region={region_id}, slug={neighborhood_slug} -> {val}")
+            return val
+    except Exception as e:
+        print(f"[fetch_neighborhood_avg_ratio_error] {e}")
+    return 1.0
+
+
 class CandidateNeighborhood(BaseModel):
     slug: str
     region_id: int
@@ -667,6 +685,7 @@ class CandidateNeighborhood(BaseModel):
 class MarketPulse(BaseModel):
     usd_toman: float
     region_avg_price_sqm: float
+    neighborhood_avg_price_sqm: float
     inflation_yoy: float
     gpr_index: float
     gpr_ma3: float
@@ -693,6 +712,7 @@ class PredictResponse(BaseModel):
     macro_diff_q05: float
     macro_diff_q95: float
     housing_to_usd_lag1: float
+    neighborhood_avg_price: float
     spatial: SpatialFeatures
     candidate_neighborhoods: List[CandidateNeighborhood]
     market_pulse: MarketPulse
@@ -831,13 +851,20 @@ async def predict(req: PredictRequest):
             "final_total_price": round(final_total_price, 2),
         }, ensure_ascii=False))
 
-        # 11. Market Pulse
-        inflation_yoy = float(get_val(macro_row, "Inflation_General_YoY_Lag_3", "inflation_general_yoy_lag_3", default=0.40))
+        # 11. Historical Neighborhood Average Quality Ratio from BigQuery
+        avg_quality_ratio = fetch_neighborhood_avg_ratio(bq, region_id, chosen_slug)
+        neighborhood_avg_price = base_price_per_sqm * avg_quality_ratio
+
+        # 12. Market Pulse
+        raw_inflation = float(get_val(macro_row, "Inflation_General_YoY_Lag_3", "inflation_general_yoy_lag_3", default=0.40))
+        # Inflation bug fix: If raw value is e.g. 69.27, it's already a percentage. Do not multiply by 100.
+        inflation_yoy = raw_inflation if raw_inflation > 2.0 else raw_inflation * 100.0
+
         gpr_index     = float(get_val(macro_row, "Iran_GPR", "iran_gpr", default=100.0))
         gpr_ma3       = float(get_val(macro_row, "Iran_GPR_MA3", "iran_gpr_ma3", default=100.0))
         month_jalali  = int(get_val(macro_row, "Month_Jalali", "month_jalali", default=11))
         year_jalali   = int(get_val(macro_row, "Year_Jalali", "year_jalali", default=1403))
-        region_avg    = housing_to_usd_lag1 * live_usd
+        region_avg    = base_price_per_sqm
 
         return PredictResponse(
             base_price_per_sqm  = round(base_price_per_sqm, 4),
@@ -858,6 +885,7 @@ async def predict(req: PredictRequest):
             macro_diff_q05      = round(macro_diff_q05, 6),
             macro_diff_q95      = round(macro_diff_q95, 6),
             housing_to_usd_lag1 = round(housing_to_usd_lag1, 6),
+            neighborhood_avg_price = round(neighborhood_avg_price, 4),
             spatial             = SpatialFeatures(
                 dist_to_metro_m     = round(spatial["dist_to_metro"], 1),
                 dist_to_cbd_m       = round(spatial["dist_to_cbd"], 1),
@@ -870,13 +898,14 @@ async def predict(req: PredictRequest):
             ),
             candidate_neighborhoods = [CandidateNeighborhood(**c) for c in candidates],
             market_pulse = MarketPulse(
-                usd_toman            = round(live_usd, 2),
-                region_avg_price_sqm = round(region_avg, 2),
-                inflation_yoy        = round(inflation_yoy * 100, 1),
-                gpr_index            = round(gpr_index, 1),
-                gpr_ma3              = round(gpr_ma3, 1),
-                month_jalali         = month_jalali,
-                year_jalali          = year_jalali,
+                usd_toman                  = round(live_usd, 2),
+                region_avg_price_sqm       = round(region_avg, 2),
+                neighborhood_avg_price_sqm = round(neighborhood_avg_price, 2),
+                inflation_yoy              = round(inflation_yoy, 1),
+                gpr_index                  = round(gpr_index, 1),
+                gpr_ma3                    = round(gpr_ma3, 1),
+                month_jalali               = month_jalali,
+                year_jalali                = year_jalali,
             ),
         )
 

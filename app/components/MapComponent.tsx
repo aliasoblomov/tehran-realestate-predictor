@@ -51,9 +51,9 @@ export default function MapComponent({
       minZoom: 11,
     });
 
-    // ── CartoDB Dark Matter — premium, minimalist dark map ──
+    // ── CartoDB Voyager — vibrant, high-contrast, crystal-clear map ──
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
       {
         maxZoom: 19,
         subdomains: "abcd",

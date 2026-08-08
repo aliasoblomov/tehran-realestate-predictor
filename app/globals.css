@@ -232,24 +232,17 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #546e8a;
-  font-size: 0.6rem;
-  font-weight: 800;
-  cursor: default;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
   margin-right: 4px;
-  transition: all 0.2s;
+  transition: color 0.2s ease;
   flex-shrink: 0;
   line-height: 1;
 }
 
 .tooltip-icon:hover {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.3);
   color: #f59e0b;
 }
 

@@ -16,6 +16,7 @@ import {
   Navigation,
   Train,
   Building,
+  Info,
 } from "lucide-react";
 
 // ─── Utility: Persian Digits & Currency Formatters ────────────────────────────
@@ -35,16 +36,6 @@ export function formatPersianCurrency(millionTomans: number): string {
   return `${toPersianDigits(formatted)} میلیون تومان`;
 }
 
-export function formatPersianCurrencyPerSqm(millionTomans: number): string {
-  if (!millionTomans || isNaN(millionTomans)) return "۰ تومان بر مترمربع";
-  if (millionTomans >= 1000) {
-    const billion = (millionTomans / 1000).toFixed(2);
-    return `${toPersianDigits(billion)} میلیارد تومان بر مترمربع`;
-  }
-  const formatted = (millionTomans >= 10 ? millionTomans.toFixed(1) : millionTomans.toFixed(2));
-  return `${toPersianDigits(formatted)} میلیون تومان بر مترمربع`;
-}
-
 export function formatTomanFull(millionTomans: number): string {
   const tomans = Math.round(millionTomans * 1_000_000);
   return toPersianDigits(tomans.toLocaleString("fa-IR")) + " تومان";
@@ -61,6 +52,7 @@ export interface CandidateNeighborhood {
 export interface MarketPulse {
   usd_toman: number;
   region_avg_price_sqm: number;
+  neighborhood_avg_price_sqm: number;
   inflation_yoy: number;
   gpr_index: number;
   gpr_ma3: number;
@@ -98,6 +90,7 @@ export interface PredictionResult {
   macro_diff_q05: number;
   macro_diff_q95: number;
   housing_to_usd_lag1: number;
+  neighborhood_avg_price?: number;
   spatial: SpatialFeatures;
   candidate_neighborhoods: CandidateNeighborhood[];
   market_pulse: MarketPulse;
@@ -113,32 +106,21 @@ interface ResultCardProps {
   debugMode?: boolean;
 }
 
-// ─── Modern Overlay Tooltip ───────────────────────────────────────────────────
+// ─── Clean Overlay Tooltip (No Circle, No Border) ────────────────────────────
 function Tooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
   return (
     <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <span
+      <Info
+        size={13}
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "15px",
-          height: "15px",
-          borderRadius: "50%",
-          background: "rgba(245,158,11,0.12)",
-          border: "1px solid rgba(245,158,11,0.3)",
-          color: "#f59e0b",
-          fontSize: "0.62rem",
-          fontWeight: 800,
+          color: show ? "#f59e0b" : "#64748b",
           cursor: "pointer",
           marginRight: "4px",
+          transition: "color 0.2s ease",
           flexShrink: 0,
-          lineHeight: 1,
         }}
-      >
-        ⓘ
-      </span>
+      />
       {show && (
         <div
           style={{
@@ -146,7 +128,7 @@ function Tooltip({ text }: { text: string }) {
             bottom: "calc(100% + 8px)",
             right: 0,
             background: "#161b27",
-            border: "1.5px solid rgba(245, 158, 11, 0.35)",
+            border: "1px solid rgba(245, 158, 11, 0.35)",
             borderRadius: "12px",
             padding: "10px 14px",
             fontSize: "0.72rem",
@@ -260,31 +242,31 @@ function DistanceBadge({
   );
 }
 
-// ─── Confidence Range Bar (Redesigned) ────────────────────────────────────────
+// ─── Confidence Range Bar (Left to Right Q05 -> Q95) ──────────────────────────
 function ConfidenceBar({ low, mid, high }: { low: number; mid: number; high: number }) {
   if (!low || !high || low >= high) return null;
   const range = high - low;
   const midPct = ((mid - low) / range) * 100;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "12px" }}>
-      {/* Min and Max easy-to-read numbers */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "12px", direction: "ltr" }}>
+      {/* Min (Q05 on Left) and Max (Q95 on Right) */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-          <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>حداقل (Q05)</span>
+          <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>Q05 (حداقل)</span>
           <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#9ab0c7" }}>
             {formatPersianCurrency(low)}
           </span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-          <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>حداکثر (Q95)</span>
+          <span style={{ fontSize: "0.6rem", color: "#546e8a", fontWeight: 700 }}>Q95 (حداکثر)</span>
           <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#9ab0c7" }}>
             {formatPersianCurrency(high)}
           </span>
         </div>
       </div>
 
-      {/* Bold gradient bar */}
+      {/* Bold gradient bar (Left to Right) */}
       <div
         style={{
           height: "8px",
@@ -326,6 +308,7 @@ function ConfidenceBar({ low, mid, high }: { low: number; mid: number; high: num
           fontWeight: 800,
           color: "#f59e0b",
           marginTop: "4px",
+          direction: "rtl",
         }}
       >
         با احتمال ۹۵٪ قیمت واقعی در این بازه قرار دارد
@@ -334,18 +317,18 @@ function ConfidenceBar({ low, mid, high }: { low: number; mid: number; high: num
   );
 }
 
-// ─── Market Pulse Widget (Redesigned) ─────────────────────────────────────────
-function MarketPulseWidget({ pulse, basePrice, finalPrice }: {
-  pulse: MarketPulse; basePrice: number; finalPrice: number;
+// ─── Market Pulse Widget (Historical Neighborhood Avg from BigQuery) ───────────
+function MarketPulseWidget({ pulse, basePrice }: {
+  pulse: MarketPulse; basePrice: number;
 }) {
-  // Inflation bug fix: DO NOT multiply by 100. Check if raw DB value is e.g. 69.27
   const safeInflation = pulse.inflation_yoy > 500 ? pulse.inflation_yoy / 100 : pulse.inflation_yoy;
   const inflColor = safeInflation > 50 ? "#f43f5e" : safeInflation > 30 ? "#f97316" : safeInflation > 15 ? "#f59e0b" : "#22c55e";
 
-  // GPR Trend logic: compare index vs ma3
   const gprDelta = pulse.gpr_index - pulse.gpr_ma3;
   const gprTrendText = gprDelta > 2 ? "افزایش نسبت به ماه قبل" : gprDelta < -2 ? "کاهش نسبت به ماه قبل" : "بدون تغییر نسبت به ماه قبل";
   const gprTrendColor = gprDelta > 2 ? "#f43f5e" : gprDelta < -2 ? "#22c55e" : "#546e8a";
+
+  const nbAvgPrice = pulse.neighborhood_avg_price_sqm || basePrice;
 
   return (
     <div
@@ -374,19 +357,19 @@ function MarketPulseWidget({ pulse, basePrice, finalPrice }: {
             <Tooltip text="قیمت میانگین هر مترمربع در کل منطقه، محاسبه‌شده از نسبت مسکن به دلار lag-1." />
           </div>
           <span style={{ fontSize: "0.95rem", fontWeight: 900, color: "#2dd4bf" }}>
-            {formatPersianCurrencyPerSqm(basePrice)}
+            {formatPersianCurrency(basePrice)}
           </span>
         </div>
 
-        {/* Neighborhood Average */}
+        {/* Neighborhood Average (True Historical Quality Avg from BigQuery) */}
         <div style={{ background: "rgba(249,115,22,0.03)", border: "1px solid rgba(249,115,22,0.18)", borderRadius: "14px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <MapPin size={13} color="#f97316" />
-            <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800 }}>میانگین محله (تعدیل‌شده)</span>
-            <Tooltip text="قیمت میانگین هر مترمربع در این محله، حاصل ضرب قیمت پایه منطقه در ضریب کیفی میکرو." />
+            <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800 }}>میانگین محله (تاریخچه‌ای)</span>
+            <Tooltip text="قیمت میانگین تاریخی محله، حاصل ضرب قیمت پایه منطقه در میانگین ضریب کیفی معاملات محله در BigQuery." />
           </div>
           <span style={{ fontSize: "0.95rem", fontWeight: 900, color: "#f97316" }}>
-            {formatPersianCurrencyPerSqm(finalPrice)}
+            {formatPersianCurrency(nbAvgPrice)}
           </span>
         </div>
 
@@ -541,10 +524,10 @@ function MathAccordion({ result }: { result: PredictionResult }) {
   const steps = [
     { label: "۱. نسبت مسکن به دلار (لگ یک ماهه)", detail: `housing_to_usd_lag1 = ${result.housing_to_usd_lag1.toFixed(6)}`, color: "#64748b" },
     { label: "۲. مدل ماکرو → لگ دیفرانسیل", detail: `Δ log(H/USD) = ${result.macro_diff.toFixed(6)}  [Q5: ${result.macro_diff_q05.toFixed(4)}, Q95: ${result.macro_diff_q95.toFixed(4)}]`, color: "#9ab0c7" },
-    { label: "۳. قیمت پایه ماکرو / مترمربع", detail: `exp(log(${result.housing_to_usd_lag1.toFixed(4)}) + ${result.macro_diff.toFixed(4)}) × ${result.usd_rate.toFixed(0)} = ${formatPersianCurrencyPerSqm(result.base_price_per_sqm)}`, color: "#64748b" },
+    { label: "۳. قیمت پایه ماکرو / مترمربع", detail: `exp(log(${result.housing_to_usd_lag1.toFixed(4)}) + ${result.macro_diff.toFixed(4)}) × ${result.usd_rate.toFixed(0)} = ${formatPersianCurrency(result.base_price_per_sqm)}`, color: "#64748b" },
     { label: "۴. ضریب کیفی میکرو", detail: `Ratio = ${result.micro_ratio.toFixed(6)} → ${toPersianDigits(((result.micro_ratio - 1) * 100).toFixed(1))}٪ ${result.micro_ratio >= 1 ? "پریمیوم" : "تخفیف"}`, color: result.micro_ratio >= 1 ? "#22c55e" : "#f43f5e" },
-    { label: "۵. قیمت نهایی / مترمربع", detail: `${formatPersianCurrencyPerSqm(result.base_price_per_sqm)} × ${result.micro_ratio.toFixed(4)} = ${formatPersianCurrencyPerSqm(result.final_price_per_sqm)}`, color: "#f97316" },
-    { label: "۶. ارزش کل ملک", detail: `${formatPersianCurrencyPerSqm(result.final_price_per_sqm)} × ${toPersianDigits(result.area)} مترمربع = ${formatPersianCurrency(result.final_total_price)}`, color: "#f59e0b" },
+    { label: "۵. قیمت نهایی / مترمربع", detail: `${formatPersianCurrency(result.base_price_per_sqm)} × ${result.micro_ratio.toFixed(4)} = ${formatPersianCurrency(result.final_price_per_sqm)}`, color: "#f97316" },
+    { label: "۶. ارزش کل ملک", detail: `${formatPersianCurrency(result.final_price_per_sqm)} × ${toPersianDigits(result.area)} مترمربع = ${formatPersianCurrency(result.final_total_price)}`, color: "#f59e0b" },
   ];
 
   return (
@@ -611,8 +594,8 @@ function DebugPanel({ result }: { result: PredictionResult }) {
     `  macro_diff_q95      = ${result.macro_diff_q95.toFixed(6)}`,
     ``,
     `> PRICES`,
-    `  base (median) = ${formatPersianCurrencyPerSqm(result.base_price_per_sqm)}`,
-    `  final         = ${formatPersianCurrencyPerSqm(result.final_price_per_sqm)}`,
+    `  base (median) = ${formatPersianCurrency(result.base_price_per_sqm)}`,
+    `  final         = ${formatPersianCurrency(result.final_price_per_sqm)}`,
     `  total         = ${formatPersianCurrency(result.final_total_price)}`,
     ``,
     `> MICRO MODEL`,
@@ -771,7 +754,6 @@ export default function ResultCard({
   const qualityColor = result.micro_ratio >= 1 ? "#22c55e" : "#f43f5e";
   const usdEquiv = (result.final_total_price * 1_000_000) / result.usd_rate;
 
-  // Correct dynamic subtext format: "بر اساس داده‌های معاملات واقعی از ۱۳۹۵ تا [Year/Month]"
   const dataSubtext = `بر اساس داده‌های معاملات واقعی از ۱۳۹۵ تا ${toPersianDigits(result.year_jalali)}/${toPersianDigits(result.month_jalali)}`;
 
   return (
@@ -835,7 +817,6 @@ export default function ResultCard({
         <div style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "6px" }}>
           ارزش تخمینی کل ملک
         </div>
-        {/* Persian Billion/Million formatted price */}
         <div className="gradient-text" style={{ fontSize: "2.1rem", fontWeight: 900, lineHeight: 1.1 }}>
           {formatPersianCurrency(result.final_total_price)}
         </div>
@@ -850,7 +831,7 @@ export default function ResultCard({
           {dataSubtext}
         </div>
 
-        {/* Confidence Interval Chart */}
+        {/* Confidence Interval Chart (Left to Right) */}
         <ConfidenceBar low={result.final_total_low} mid={result.final_total_price} high={result.final_total_high} />
       </div>
 
@@ -858,7 +839,7 @@ export default function ResultCard({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
         <MetricCard
           label="قیمت پایه / مترمربع"
-          value={formatPersianCurrencyPerSqm(result.base_price_per_sqm)}
+          value={formatPersianCurrency(result.base_price_per_sqm)}
           sub="مدل ماکرو (میانه)"
           color="#9ab0c7"
           bg="rgba(154,176,199,0.04)"
@@ -878,8 +859,8 @@ export default function ResultCard({
         />
         <MetricCard
           label="قیمت نهایی / مترمربع"
-          value={formatPersianCurrencyPerSqm(result.final_price_per_sqm)}
-          sub={`≈ $${toPersianDigits(((result.final_price_per_sqm * 1_000_000) / result.usd_rate).toFixed(0))}/مترمربع`}
+          value={formatPersianCurrency(result.final_price_per_sqm)}
+          sub={`≈ $${toPersianDigits(((result.final_price_per_sqm * 1_000_000) / result.usd_rate).toFixed(0))}`}
           color="#f97316"
           bg="rgba(249,115,22,0.06)"
           icon={<Activity size={11} />}
@@ -893,7 +874,6 @@ export default function ResultCard({
         <MarketPulseWidget
           pulse={result.market_pulse}
           basePrice={result.base_price_per_sqm}
-          finalPrice={result.final_price_per_sqm}
         />
       )}
 
