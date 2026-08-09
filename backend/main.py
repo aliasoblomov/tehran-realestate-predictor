@@ -424,15 +424,19 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
     query = f"""
         WITH user_point AS (SELECT ST_GEOGPOINT({lon}, {lat}) AS pt),
         metro_calc AS (
-            SELECT MIN(ST_DISTANCE(
-                ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
-                (SELECT pt FROM user_point)
-            )) AS dist
+            SELECT 
+                ST_DISTANCE(
+                    ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
+                    (SELECT pt FROM user_point)
+                ) AS dist,
+                station_name_fa
             FROM `{BQ_DATASET}.ref_metro_stations`
             WHERE ST_DWITHIN(
                 ST_GEOGPOINT(SAFE_CAST(longitude AS FLOAT64), SAFE_CAST(latitude AS FLOAT64)),
                 (SELECT pt FROM user_point), 10000
             )
+            ORDER BY dist ASC
+            LIMIT 1
         ),
         hwy_geom AS (
             SELECT SAFE.ST_GEOGFROMTEXT({strip_z}) AS geom
@@ -512,7 +516,8 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
             COALESCE((SELECT decay_class FROM decay_calc),   0) AS urban_decay_class,
             COALESCE((SELECT aqi FROM aqi_calc),           0.0) AS air_quality_aqi,
             COALESCE((SELECT traffic_score FROM traffic_calc), 0) AS traffic_zone_status,
-            COALESCE((SELECT seismic_risk FROM seismic_calc),  1) AS seismic_risk_level
+            COALESCE((SELECT seismic_risk FROM seismic_calc),  1) AS seismic_risk_level,
+            (SELECT station_name_fa FROM metro_calc) AS nearest_metro_station
     """
     try:
         rows = list(client.query(query).result())
@@ -529,6 +534,7 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
             "air_quality_aqi": FALLBACK_AIR_QUALITY,
             "traffic_zone_status": FALLBACK_TRAFFIC_ZONE,
             "seismic_risk_level": FALLBACK_SEISMIC_RISK,
+            "nearest_metro_station": "",
         }
     r = dict(rows[0].items())
     return {
@@ -540,6 +546,7 @@ def fetch_spatial_features(client, lat: float, lon: float) -> dict:
         "air_quality_aqi":    float(r["air_quality_aqi"]    or FALLBACK_AIR_QUALITY),
         "traffic_zone_status":int(r["traffic_zone_status"]  or FALLBACK_TRAFFIC_ZONE),
         "seismic_risk_level": int(r["seismic_risk_level"]   or FALLBACK_SEISMIC_RISK),
+        "nearest_metro_station": str(r.get("nearest_metro_station") or ""),
     }
 
 
@@ -736,6 +743,7 @@ class SpatialFeatures(BaseModel):
     air_quality_aqi: float
     traffic_zone_status: int
     urban_decay_class: int
+    nearest_metro_station: Optional[str] = None
 
 
 def fetch_neighborhood_avg_ratio(client, region_id: int, neighborhood_slug: str) -> float:
@@ -1006,6 +1014,7 @@ async def predict(req: PredictRequest):
                 air_quality_aqi     = spatial["air_quality_aqi"],
                 traffic_zone_status = spatial["traffic_zone_status"],
                 urban_decay_class   = spatial["urban_decay_class"],
+                nearest_metro_station = spatial.get("nearest_metro_station", ""),
             ),
             candidate_neighborhoods = [CandidateNeighborhood(**c) for c in candidates],
             market_pulse = MarketPulse(

@@ -15,8 +15,8 @@ import {
   Wind,
   Navigation,
   Train,
-  Building,
   Info,
+  Download,
 } from "lucide-react";
 
 // ─── Utility: Persian Digits & Currency Formatters ────────────────────────────
@@ -105,6 +105,34 @@ interface ResultCardProps {
   onNeighborhoodChange?: (slug: string) => void;
   debugMode?: boolean;
 }
+
+const PERSIAN_NEIGHBORHOODS: Record<string, string> = {
+  "gisha": "گیشا",
+  "saadat-abad": "سعادت‌آباد",
+  "eivanak": "ایوانک",
+  "tajrish": "تجریش",
+  "elahiyeh": "الهیه",
+  "zafaraniyeh": "زعفرانیه",
+  "mahmoodiyeh": "محمودیه",
+  "velenjak": "ولنجک",
+  "evin": "اوین",
+  "niavaran": "نیاوران",
+  "pasdaran": "پاسداران",
+  "shahrak-e-gharb": "شهرک غرب",
+  "poonak": "پونک",
+  "sadeghiyeh": "صادقیه",
+  "ekbatan": "اکباتان",
+  "tehranpars": "تهرانپارس",
+  "chitgar": "چیتگر",
+  "jordan": "جردن",
+  "vanak": "ونک",
+  "marzdaran": "مرزداران",
+  "shahrak-e-jandarmeri": "شهرک ژاندارمری",
+  "aseman": "آسمان",
+  "darya": "دریا",
+  "sepehr": "سپهر",
+  "darakeh": "درکه",
+};
 
 // ─── Clean Overlay Tooltip (No Circle, No Border) ────────────────────────────
 function Tooltip({ text }: { text: string }) {
@@ -417,7 +445,16 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
       icon: <Train size={14} />,
       label: "فاصله تا ایستگاه مترو",
       tooltip: "دسترسی پیاده به مترو (کمتر از ۵۰۰ متر) ارزش ملک را تا ۱۵٪ افزایش می‌دهد.",
-      value: <DistanceBadge meters={spatial.dist_to_metro_m} sweetSpotMin={0} sweetSpotMax={500} label="🚇" />,
+      value: (
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <DistanceBadge meters={spatial.dist_to_metro_m} sweetSpotMin={0} sweetSpotMax={500} label="🚇" />
+          {spatial.nearest_metro_station && (
+            <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 700 }}>
+              ایستگاه {spatial.nearest_metro_station}
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       icon: <Navigation size={14} />,
@@ -772,34 +809,26 @@ export default function ResultCard({
             <div style={{ fontWeight: 900, fontSize: "0.95rem", color: "#edf2f7" }}>نتیجه ارزیابی ملک</div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
               <MapPin size={11} color="#2dd4bf" />
-              {result.candidate_neighborhoods?.length > 0 ? (
-                <select
-                  value={result.neighborhood}
-                  onChange={(e) => onNeighborhoodChange?.(e.target.value)}
-                  style={{
-                    background: "rgba(15,23,42,0.85)", border: "1px solid rgba(45,212,191,0.38)", borderRadius: "8px",
-                    color: "#2dd4bf", fontSize: "0.73rem", fontWeight: 800, padding: "3px 10px", cursor: "pointer", outline: "none",
-                    fontFamily: "Vazirmatn, sans-serif",
-                  }}
-                >
-                  {result.candidate_neighborhoods.map((c) => (
-                    <option key={c.slug} value={c.slug} style={{ background: "#161b27", color: "#f8fafc" }}>
-                      {c.name} ({toPersianDigits(c.distance_km)} کیلومتر) · منطقه {toPersianDigits(c.region_id)}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span style={{ fontSize: "0.7rem", color: "#2dd4bf", fontWeight: 700 }}>
-                  {result.neighborhood_name} · منطقه {toPersianDigits(result.region_id)}
-                </span>
-              )}
+              <span style={{ fontSize: "0.75rem", color: "#2dd4bf", fontWeight: 800 }}>
+                 محله {PERSIAN_NEIGHBORHOODS[result.neighborhood] || result.neighborhood_name} · منطقه {toPersianDigits(result.region_id)}
+              </span>
             </div>
           </div>
         </div>
-        <div style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.18)", borderRadius: "10px", padding: "7px 14px", textAlign: "right" }}>
-          <div style={{ fontSize: "0.57rem", color: "#546e8a", marginBottom: "2px", fontWeight: 700 }}>متراژ ملک</div>
-          <div style={{ fontWeight: 900, color: "#2dd4bf", fontSize: "0.88rem" }}>
-            {toPersianDigits(result.area.toLocaleString())} مترمربع
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button 
+            className="no-print"
+            onClick={() => window.print()}
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "6px 12px", display: "flex", gap: "6px", alignItems: "center", cursor: "pointer", color: "#edf2f7", fontSize: "0.7rem", fontWeight: 700 }}
+          >
+            <Download size={14} />
+            <span>گزارش PDF</span>
+          </button>
+          <div style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.18)", borderRadius: "10px", padding: "7px 14px", textAlign: "right" }}>
+            <div style={{ fontSize: "0.57rem", color: "#546e8a", marginBottom: "2px", fontWeight: 700 }}>متراژ ملک</div>
+            <div style={{ fontWeight: 900, color: "#2dd4bf", fontSize: "0.88rem" }}>
+              {toPersianDigits(result.area.toLocaleString())} مترمربع
+            </div>
           </div>
         </div>
       </div>

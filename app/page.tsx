@@ -286,7 +286,30 @@ export default function Home() {
             padding: 8px 12px 16px !important;
           }
         }
+        @media print {
+          body {
+            background: #fff !important;
+            color: #000 !important;
+          }
+          .glass-card {
+            background: none !important;
+            border: 1px solid #ccc !important;
+            box-shadow: none !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          /* Hide map for print, or just hide nav */
+          nav {
+            display: none !important;
+          }
+        }
       `}</style>
+
+      {/* ── Footer ── */}
+      <footer className="no-print" style={{ textAlign: "center", padding: "20px", color: "#546e8a", fontSize: "0.8rem", borderTop: "1px solid rgba(255,255,255,0.05)", marginTop: "20px" }}>
+         طراحی و توسعه توسط <a href="mailto:aliizadi27@gmail.com" style={{ color: "#2dd4bf", textDecoration: "none", fontWeight: 700 }}>aliizadi27@gmail.com</a>
+      </footer>
     </main>
   );
 }
