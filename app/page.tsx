@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect, useRef } from "react";
 import Navbar from "./components/Navbar";
-import PredictionForm, { FormValues } from "./components/PredictionForm";
+import PredictionForm, { FormValues, toPersianDigits } from "./components/PredictionForm";
 import ResultCard, { PredictionResult } from "./components/ResultCard";
 
 // FastAPI backend URL — set NEXT_PUBLIC_API_URL in Vercel environment variables
@@ -94,12 +94,32 @@ export default function Home() {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=fa`);
       const data = await res.json();
-      if (data && data.display_name) {
-        // e.g., "پلاک 12, کوچه مریم, خیابان آزادی, محله جیحون, منطقه 10, تهران, استان تهران, 13456, ایران"
-        // Let's strip out "ایران" and zipcodes to make it cleaner, or just use display_name
-        let cleanAddress = data.display_name.replace(/,\s*ایران$/, "");
-        cleanAddress = cleanAddress.replace(/,\s*\d{5}-?\d{5}$/, ""); // remove zip
-        setAddressName(cleanAddress);
+      if (data && data.address) {
+        const addr = data.address;
+        
+        // City (تهران)
+        const city = addr.city || addr.town || addr.state || "تهران";
+        
+        // Region (منطقه ۲)
+        let regionText = "";
+        const suburb = addr.suburb || addr.municipality || addr.city_district || "";
+        const regionMatch = suburb.match(/منطقه\s*\d+/);
+        if (regionMatch) {
+          regionText = regionMatch[0]; // "منطقه ۲"
+        }
+
+        // Neighbourhood (کوی نصر / گیشا)
+        const nb = addr.neighbourhood || addr.residential || "";
+
+        // Road (هفدهم)
+        const road = addr.road || "";
+
+        // Plate (پلاک ۲۵۶)
+        const plate = addr.house_number ? `پلاک ${toPersianDigits(addr.house_number)}` : "";
+
+        // e.g. "تهران، منطقه ۲، کوی نصر، هفدهم، پلاک ۲۵۶"
+        const addressParts = [city, regionText, nb, road, plate].filter(Boolean);
+        setAddressName(addressParts.join("، "));
       }
     } catch (e) {
       console.error("Nominatim fetch failed", e);
@@ -307,24 +327,35 @@ export default function Home() {
           }
         }
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
           body, html {
             background: #0f1117 !important;
             color: #edf2f7 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-          }
-          .glass-card {
-            background: rgba(22, 27, 39, 0.78) !important;
-            border: 1px solid rgba(255,255,255,0.07) !important;
-            box-shadow: none !important;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .no-print, #map-panel, nav {
-            display: none !important;
+            height: 100%;
+            overflow: visible !important;
           }
           #main-grid {
             display: block !important;
+            padding: 15px !important;
+          }
+          .glass-card {
+            background: rgba(22, 27, 39, 1) !important;
+            border: 1px solid rgba(255,255,255,0.07) !important;
+            box-shadow: none !important;
+            margin-bottom: 20px;
+          }
+          .no-print, #map-panel, nav, footer {
+            display: none !important;
+          }
+          /* Prevent elements from page breaking awkwardly */
+          .avoid-break {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           /* Force gradient backgrounds to print */
           .gradient-print {

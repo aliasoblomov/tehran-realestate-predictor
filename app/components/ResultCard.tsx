@@ -455,6 +455,7 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
 
   return (
     <div
+      className="avoid-break"
       style={{
         background: "rgba(255,255,255,0.02)",
         border: "1px solid rgba(255,255,255,0.07)",
@@ -829,6 +830,7 @@ export default function ResultCard({
 
       {/* ── Hero Price Banner ── */}
       <div
+        className="avoid-break"
         style={{
           background: "linear-gradient(135deg, rgba(249,115,22,0.1), rgba(22,27,39,0.6) 60%, rgba(245,158,11,0.06))",
           border: "1px solid rgba(249,115,22,0.22)",
@@ -859,7 +861,7 @@ export default function ResultCard({
       </div>
 
       {/* ── Metric Cards ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+      <div className="avoid-break" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
         <MetricCard
           label="قیمت پایه / مترمربع"
           value={formatPersianCurrency(result.base_price_per_sqm)}
