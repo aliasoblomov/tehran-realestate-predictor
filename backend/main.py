@@ -331,8 +331,24 @@ def get_val(d: dict, *keys, default=0.0):
     return default
 
 
-def fetch_latest_macro_row(client) -> dict:
+def fetch_latest_macro_row(client, region_id: Optional[int] = None) -> dict:
     for tbl in ["macro_training_v2", "macro_training_dataset", "macro_monthly_database"]:
+        if region_id is not None:
+            try:
+                query = f"""
+                    SELECT *
+                    FROM `{BQ_DATASET}.{tbl}`
+                    WHERE region_id = {region_id}
+                    ORDER BY Year_Jalali DESC, Month_Jalali DESC
+                    LIMIT 1
+                """
+                rows = list(client.query(query).result())
+                if rows:
+                    print(f"[fetch_latest_macro_row] Loaded row from {tbl} for region_id={region_id}")
+                    return dict(rows[0].items())
+            except Exception as e:
+                print(f"[fetch_latest_macro_row_error {tbl} region_id={region_id}] {e}")
+
         try:
             query = f"""
                 SELECT *
@@ -342,7 +358,7 @@ def fetch_latest_macro_row(client) -> dict:
             """
             rows = list(client.query(query).result())
             if rows:
-                print(f"[fetch_latest_macro_row] Loaded row from {tbl}")
+                print(f"[fetch_latest_macro_row] Loaded row from {tbl} (fallback/global)")
                 return dict(rows[0].items())
         except Exception as e:
             print(f"[fetch_latest_macro_row_error {tbl}] {e}")
@@ -840,7 +856,33 @@ async def predict(req: PredictRequest):
     try:
         print(f"[predict] lat={req.lat}, lon={req.lon}, area={req.area}, slug={req.selected_neighborhood_slug}")
 
-        # 1. Live USD resolution cascade
+        # 1. Neighborhood selection & Region detection
+        candidates  = get_top_candidate_neighborhoods(req.lat, req.lon, top_k=3)
+        closest_nb  = candidates[0]
+
+        if req.selected_neighborhood_slug:
+            raw_slug    = req.selected_neighborhood_slug
+            chosen_slug = normalize_slug(raw_slug)
+            matched     = next(
+                (x for x in NEIGHBORHOODS_DATA if x["slug"] == chosen_slug),
+                next((x for x in NEIGHBORHOODS_DATA if x["slug"] == raw_slug), None)
+            )
+            nb_region   = matched["region_id"] if matched else closest_nb["region_id"]
+        else:
+            chosen_slug = closest_nb["slug"]
+            nb_region   = closest_nb["region_id"]
+
+        chosen_slug = normalize_slug(chosen_slug)
+        
+        bq = get_bq_client()
+        bq_region = fetch_region_id_from_borders(bq, req.lat, req.lon)
+        region_id = bq_region if bq_region is not None else nb_region
+        print(f"[predict] chosen_slug (normalized)='{chosen_slug}', nb_region={nb_region}, final_region_id={region_id}")
+
+        # 2. BigQuery macro row (Fetched WITH region_id)
+        macro_row = fetch_latest_macro_row(bq, region_id)
+
+        # 3. Live USD resolution cascade
         live_usd = None
         if req.usd_rate and float(req.usd_rate) > 1000:
             live_usd = float(req.usd_rate)
@@ -849,10 +891,6 @@ async def predict(req: PredictRequest):
             live_usd_scraped = scrape_live_usd()
             if live_usd_scraped and live_usd_scraped > 1000:
                 live_usd = live_usd_scraped
-
-        # 2. BigQuery macro row
-        bq = get_bq_client()
-        macro_row = fetch_latest_macro_row(bq)
 
         if live_usd is None:
             macro_usd = get_val(
@@ -874,30 +912,7 @@ async def predict(req: PredictRequest):
         if live_usd is None or live_usd <= 1000:
             live_usd = 188000.0  # Fallback default
 
-        # 3. Neighborhood selection
-        candidates  = get_top_candidate_neighborhoods(req.lat, req.lon, top_k=3)
-        closest_nb  = candidates[0]
-
-        if req.selected_neighborhood_slug:
-            raw_slug    = req.selected_neighborhood_slug
-            chosen_slug = normalize_slug(raw_slug)
-            matched     = next(
-                (x for x in NEIGHBORHOODS_DATA if x["slug"] == chosen_slug),
-                next((x for x in NEIGHBORHOODS_DATA if x["slug"] == raw_slug), None)
-            )
-            nb_region   = matched["region_id"] if matched else closest_nb["region_id"]
-        else:
-            chosen_slug = closest_nb["slug"]
-            nb_region   = closest_nb["region_id"]
-
-        chosen_slug = normalize_slug(chosen_slug)
-        print(f"[predict] chosen_slug (normalized)='{chosen_slug}', nb_region={nb_region}")
-
-        # 4. Region detection
-        bq_region = fetch_region_id_from_borders(bq, req.lat, req.lon)
-        region_id = bq_region if bq_region is not None else nb_region
-
-        # 5. Spatial features
+        # 4. Spatial features
         spatial = fetch_spatial_features(bq, req.lat, req.lon)
 
         # 6. Neighborhood encoding — Fetch directly from BigQuery
