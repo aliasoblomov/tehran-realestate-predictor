@@ -44,6 +44,7 @@ interface PredictionFormProps {
   isLocked?: boolean;
   onEdit?: () => void;
   resultData?: { region_id: number; neighborhood_name: string };
+  addressName?: string;
 }
 
 type Step = "type" | "area" | "rooms" | "age" | "floors" | "amenities" | "review";
@@ -396,6 +397,7 @@ export default function PredictionForm({
   isLocked,
   onEdit,
   resultData,
+  addressName,
 }: PredictionFormProps) {
   const [step, setStep] = useState<Step>("type");
   const [vals, setVals] = useState<FormValues>(DEFAULT);
@@ -466,8 +468,8 @@ export default function PredictionForm({
         </div>
 
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "14px" }}>
-          <div style={{ fontSize: "0.8rem", color: "#9ab0c7", fontWeight: 800, marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-             📍 استان تهران، شهر تهران، منطقه {toPersianDigits(resultData.region_id)}، محله {resultData.neighborhood_name}
+          <div style={{ fontSize: "0.8rem", color: "#9ab0c7", fontWeight: 800, marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px", lineHeight: 1.6 }}>
+             📍 {addressName || `استان تهران، شهر تهران، منطقه ${toPersianDigits(resultData.region_id)}، محله ${resultData.neighborhood_name}`}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", fontSize: "0.75rem", color: "#edf2f7", fontWeight: 700 }}>
             <span style={{ background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: "8px" }}>

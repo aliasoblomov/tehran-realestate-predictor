@@ -286,6 +286,7 @@ function ConfidenceBar({ low, mid, high }: { low: number; mid: number; high: num
             borderRadius: "100px",
             background: "linear-gradient(90deg, rgba(249,115,22,0.18), rgba(245,158,11,0.6), rgba(249,115,22,0.18))",
           }}
+          className="gradient-print"
         />
         {/* Median pin */}
         <div
@@ -795,7 +796,24 @@ export default function ResultCard({
           <button 
             className="no-print"
             onClick={() => window.print()}
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "0 16px", display: "flex", gap: "6px", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#edf2f7", fontSize: "0.7rem", fontWeight: 700 }}
+            style={{ 
+              background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", 
+              border: "none", 
+              boxShadow: "0 4px 12px rgba(249,115,22,0.3)",
+              borderRadius: "10px", 
+              padding: "0 16px", 
+              display: "flex", 
+              gap: "6px", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              cursor: "pointer", 
+              color: "#fff", 
+              fontSize: "0.75rem", 
+              fontWeight: 800,
+              transition: "transform 0.2s"
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.02)")}
+            onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
           >
             <Download size={14} />
             <span>گزارش PDF</span>

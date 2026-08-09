@@ -56,6 +56,7 @@ export default function Home() {
   const [usdRate, setUsdRate] = useState<number | null>(null);
   const [debugMode, setDebugMode] = useState(false);
   const [lastFormValues, setLastFormValues] = useState<FormValues | null>(null);
+  const [addressName, setAddressName] = useState<string>("");
 
   // Read ?debug=true from URL
   useEffect(() => {
@@ -82,12 +83,27 @@ export default function Home() {
     fetchLiveRate();
   }, []);
 
-  const handleLocationSelect = useCallback((lat: number, lon: number) => {
+  const handleLocationSelect = useCallback(async (lat: number, lon: number) => {
     const loc = { lat, lon };
     setSelectedLocation(loc);
     selectedLocationRef.current = loc;
     setResult(null);
     setError(null);
+    setAddressName("");
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=fa`);
+      const data = await res.json();
+      if (data && data.display_name) {
+        // e.g., "پلاک 12, کوچه مریم, خیابان آزادی, محله جیحون, منطقه 10, تهران, استان تهران, 13456, ایران"
+        // Let's strip out "ایران" and zipcodes to make it cleaner, or just use display_name
+        let cleanAddress = data.display_name.replace(/,\s*ایران$/, "");
+        cleanAddress = cleanAddress.replace(/,\s*\d{5}-?\d{5}$/, ""); // remove zip
+        setAddressName(cleanAddress);
+      }
+    } catch (e) {
+      console.error("Nominatim fetch failed", e);
+    }
   }, []);
 
   const handleSubmit = useCallback(
@@ -255,6 +271,7 @@ export default function Home() {
             isLocked={!!result}
             onEdit={() => setResult(null)}
             resultData={result ? { region_id: result.region_id, neighborhood_name: result.neighborhood_name } : undefined}
+            addressName={addressName}
           />
         </div>
 
@@ -290,28 +307,36 @@ export default function Home() {
           }
         }
         @media print {
-          body {
-            background: #fff !important;
-            color: #000 !important;
+          body, html {
+            background: #0f1117 !important;
+            color: #edf2f7 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .glass-card {
-            background: none !important;
-            border: 1px solid #ccc !important;
+            background: rgba(22, 27, 39, 0.78) !important;
+            border: 1px solid rgba(255,255,255,0.07) !important;
             box-shadow: none !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
-          .no-print {
+          .no-print, #map-panel, nav {
             display: none !important;
           }
-          /* Hide map for print, or just hide nav */
-          nav {
-            display: none !important;
+          #main-grid {
+            display: block !important;
+          }
+          /* Force gradient backgrounds to print */
+          .gradient-print {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
 
       {/* ── Footer ── */}
-      <footer className="no-print" style={{ textAlign: "center", padding: "20px", color: "#546e8a", fontSize: "0.8rem", borderTop: "1px solid rgba(255,255,255,0.05)", marginTop: "20px" }}>
-         طراحی و توسعه توسط <a href="mailto:aliizadi27@gmail.com" style={{ color: "#2dd4bf", textDecoration: "none", fontWeight: 700 }}>aliizadi27@gmail.com</a>
+      <footer className="no-print" style={{ textAlign: "center", padding: "20px", color: "#334155", fontSize: "0.7rem", borderTop: "1px solid rgba(255,255,255,0.02)", marginTop: "20px", opacity: 0.6 }}>
+         developer contact: <a href="mailto:aliizadi27@gmail.com" style={{ color: "inherit", textDecoration: "none" }}>aliizadi27@gmail.com</a>
       </footer>
     </main>
   );
