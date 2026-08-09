@@ -244,7 +244,7 @@ export default function Home() {
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            maxHeight: "clamp(380px, 52vh, 600px)",
+            maxHeight: result ? "auto" : "clamp(380px, 52vh, 600px)",
           }}
           id="form-panel"
         >
@@ -252,6 +252,9 @@ export default function Home() {
             selectedLocation={selectedLocation}
             onSubmit={handleSubmit}
             isLoading={isLoading}
+            isLocked={!!result}
+            onEdit={() => setResult(null)}
+            resultData={result ? { region_id: result.region_id, neighborhood_name: result.neighborhood_name } : undefined}
           />
         </div>
 

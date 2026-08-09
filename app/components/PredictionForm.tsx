@@ -41,6 +41,9 @@ interface PredictionFormProps {
   selectedLocation: { lat: number; lon: number } | null;
   onSubmit: (values: FormValues, selectedSlug?: string) => void;
   isLoading: boolean;
+  isLocked?: boolean;
+  onEdit?: () => void;
+  resultData?: { region_id: number; neighborhood_name: string };
 }
 
 type Step = "type" | "area" | "rooms" | "age" | "floors" | "amenities" | "review";
@@ -390,6 +393,9 @@ export default function PredictionForm({
   selectedLocation,
   onSubmit,
   isLoading,
+  isLocked,
+  onEdit,
+  resultData,
 }: PredictionFormProps) {
   const [step, setStep] = useState<Step>("type");
   const [vals, setVals] = useState<FormValues>(DEFAULT);
@@ -439,12 +445,58 @@ export default function PredictionForm({
 
   const canProceed = !!selectedLocation;
 
-  const AGE_OPTIONS = [
-    { label: "نوساز", value: 0 },
-    { label: "۱ تا ۵ سال", value: 3 },
-    { label: "۵ تا ۱۵ سال", value: 10 },
-    { label: "بالای ۱۵ سال", value: 20 },
-  ];
+  if (isLocked && resultData) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7", display: "flex", alignItems: "center", gap: "6px" }}>
+            <MapPin size={18} color="#2dd4bf" />
+            مشخصات ملک ارزیابی‌شده
+          </div>
+          <button
+            className="no-print"
+            onClick={onEdit}
+            style={{
+              background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", borderRadius: "100px",
+              padding: "4px 12px", color: "#f97316", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", transition: "all 0.2s ease"
+            }}
+          >
+            ویرایش اطلاعات
+          </button>
+        </div>
+
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "14px" }}>
+          <div style={{ fontSize: "0.8rem", color: "#9ab0c7", fontWeight: 800, marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+             📍 استان تهران، شهر تهران، منطقه {toPersianDigits(resultData.region_id)}، محله {resultData.neighborhood_name}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", fontSize: "0.75rem", color: "#edf2f7", fontWeight: 700 }}>
+            <span style={{ background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: "8px" }}>
+              {vals.is_villa ? "🏠 ویلایی" : "🏢 آپارتمان"}
+            </span>
+            <span style={{ background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: "8px" }}>
+              📏 {toPersianDigits(vals.area)} مترمربع
+            </span>
+            <span style={{ background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: "8px" }}>
+              🛏️ {toPersianDigits(vals.rooms_count)} اتاق
+            </span>
+            <span style={{ background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: "8px" }}>
+              🏗️ {vals.building_age === 0 ? "نوساز" : `${toPersianDigits(vals.building_age)} سال ساخت`}
+            </span>
+            {!vals.is_villa && (
+              <span style={{ background: "rgba(255,255,255,0.05)", padding: "4px 10px", borderRadius: "8px" }}>
+                🏢 طبقه {toPersianDigits(vals.floor_num)} از {toPersianDigits(vals.total_floors)}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "10px", fontSize: "0.7rem", color: "#546e8a" }}>
+            {vals.has_elevator && <span>✅ آسانسور</span>}
+            {vals.has_parking && <span>✅ پارکینگ</span>}
+            {vals.has_storage && <span>✅ انباری</span>}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const stepContent: Record<Step, React.ReactNode> = {
     // ── Step 1: نوع ملک ─────────────────────────────────────────────────────
@@ -583,47 +635,22 @@ export default function PredictionForm({
         <div style={{ fontSize: "1rem", fontWeight: 900, color: "#edf2f7" }}>
           سن بنا چقدر است؟
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-          {AGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.label}
-              id={`age-${opt.value}`}
-              type="button"
-              onClick={() => { set("building_age", opt.value); setTimeout(goNext, 200); }}
-              style={{
-                background: vals.building_age === opt.value ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.025)",
-                border: vals.building_age === opt.value
-                  ? "1.5px solid rgba(245,158,11,0.5)"
-                  : "1px solid rgba(255,255,255,0.07)",
-                borderRadius: "14px",
-                padding: "16px",
-                cursor: "pointer",
-                fontSize: "0.85rem",
-                fontWeight: 800,
-                color: vals.building_age === opt.value ? "#f59e0b" : "#64748b",
-                transition: "all 0.18s ease",
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "0.68rem", color: "#546e8a" }}>یا دقیق وارد کنید:</span>
-          <input
-            id="age-exact"
-            type="number"
-            value={vals.building_age === 0 ? "" : vals.building_age}
+        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          <Stepper
+            label="سن بنا (سال)"
+            id="age-stepper"
+            value={vals.building_age}
             min={0}
-            max={80}
-            onFocus={(e) => {
-              if (e.target.value === "0" || e.target.value === "۰") e.target.value = "";
-            }}
-            onChange={(e) => set("building_age", e.target.value === "" ? 0 : Number(e.target.value))}
-            className="form-input"
-            style={{ maxWidth: "80px", padding: "6px 10px", fontSize: "0.88rem", direction: "ltr", textAlign: "center" }}
+            max={40}
+            onChange={(v) => set("building_age", v)}
           />
-          <span style={{ fontSize: "0.68rem", color: "#546e8a" }}>سال</span>
+          <div style={{ display: "flex", justifyContent: "center", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}>
+            <Pill label="نوساز" selected={vals.building_age === 0} onClick={() => set("building_age", 0)} />
+            <Pill label="۵ سال" selected={vals.building_age === 5} onClick={() => set("building_age", 5)} />
+            <Pill label="۱۰ سال" selected={vals.building_age === 10} onClick={() => set("building_age", 10)} />
+            <Pill label="۱۵ سال" selected={vals.building_age === 15} onClick={() => set("building_age", 15)} />
+            <Pill label="۲۰ سال" selected={vals.building_age === 20} onClick={() => set("building_age", 20)} />
+          </div>
         </div>
       </div>
     ),

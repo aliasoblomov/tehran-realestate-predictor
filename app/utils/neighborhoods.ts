@@ -12,6 +12,45 @@ export interface CandidateNeighborhood {
   name: string;
 }
 
+export const PERSIAN_NEIGHBORHOODS: Record<string, string> = {
+  "gisha": "گیشا",
+  "saadat-abad": "سعادت‌آباد",
+  "eivanak": "ایوانک",
+  "tajrish": "تجریش",
+  "elahiyeh": "الهیه",
+  "zafaraniyeh": "زعفرانیه",
+  "mahmoodiyeh": "محمودیه",
+  "velenjak": "ولنجک",
+  "evin": "اوین",
+  "niavaran": "نیاوران",
+  "pasdaran": "پاسداران",
+  "shahrak-e-gharb": "شهرک غرب",
+  "poonak": "پونک",
+  "sadeghiyeh": "صادقیه",
+  "ekbatan": "اکباتان",
+  "tehranpars": "تهرانپارس",
+  "chitgar": "چیتگر",
+  "jordan": "جردن",
+  "vanak": "ونک",
+  "marzdaran": "مرزداران",
+  "shahrak-e-jandarmeri": "شهرک ژاندارمری",
+  "aseman": "آسمان",
+  "darya": "دریا",
+  "sepehr": "سپهر",
+  "darakeh": "درکه",
+  "amir-abad": "امیرآباد",
+  "yousef-abad": "یوسف‌آباد",
+  "qezel-qaleh": "قزل قلعه",
+  "tehransar": "تهرانسر",
+  "chitgar-lake": "دریاچه چیتگر",
+  "narmak": "نارمک",
+  "sarsabz": "سرسبز",
+  "haft-hoz": "هفت حوض",
+  "bagh-feyz": "باغ فیض",
+  "shahr-e-ziba": "شهر زیبا",
+  "hasan-abad": "حسن‌آباد",
+};
+
 export const NEIGHBORHOODS_DATA: NeighborhoodItem[] = [
   {"slug": "tajrish", "region_id": 1, "lat": 35.802185, "lon": 51.431004},
   {"slug": "elahiyeh", "region_id": 1, "lat": 35.790916, "lon": 51.426933},
@@ -370,7 +409,7 @@ export function getTopCandidates(lat: number, lon: number, topK = 3): CandidateN
       slug: item.slug,
       region_id: item.region_id,
       distance_km: Math.round(dist * 100) / 100,
-      name: item.slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      name: PERSIAN_NEIGHBORHOODS[item.slug] || item.slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
     };
   })
     .sort((a, b) => a.distance_km - b.distance_km)

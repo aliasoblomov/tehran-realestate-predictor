@@ -108,33 +108,7 @@ interface ResultCardProps {
   debugMode?: boolean;
 }
 
-const PERSIAN_NEIGHBORHOODS: Record<string, string> = {
-  "gisha": "گیشا",
-  "saadat-abad": "سعادت‌آباد",
-  "eivanak": "ایوانک",
-  "tajrish": "تجریش",
-  "elahiyeh": "الهیه",
-  "zafaraniyeh": "زعفرانیه",
-  "mahmoodiyeh": "محمودیه",
-  "velenjak": "ولنجک",
-  "evin": "اوین",
-  "niavaran": "نیاوران",
-  "pasdaran": "پاسداران",
-  "shahrak-e-gharb": "شهرک غرب",
-  "poonak": "پونک",
-  "sadeghiyeh": "صادقیه",
-  "ekbatan": "اکباتان",
-  "tehranpars": "تهرانپارس",
-  "chitgar": "چیتگر",
-  "jordan": "جردن",
-  "vanak": "ونک",
-  "marzdaran": "مرزداران",
-  "shahrak-e-jandarmeri": "شهرک ژاندارمری",
-  "aseman": "آسمان",
-  "darya": "دریا",
-  "sepehr": "سپهر",
-  "darakeh": "درکه",
-};
+import { PERSIAN_NEIGHBORHOODS } from "../utils/neighborhoods";
 
 // ─── Clean Overlay Tooltip (No Circle, No Border) ────────────────────────────
 function Tooltip({ text }: { text: string }) {
@@ -817,16 +791,16 @@ export default function ResultCard({
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "stretch", gap: "12px" }}>
           <button 
             className="no-print"
             onClick={() => window.print()}
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "6px 12px", display: "flex", gap: "6px", alignItems: "center", cursor: "pointer", color: "#edf2f7", fontSize: "0.7rem", fontWeight: 700 }}
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "0 16px", display: "flex", gap: "6px", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#edf2f7", fontSize: "0.7rem", fontWeight: 700 }}
           >
             <Download size={14} />
             <span>گزارش PDF</span>
           </button>
-          <div style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.18)", borderRadius: "10px", padding: "7px 14px", textAlign: "right" }}>
+          <div style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.18)", borderRadius: "10px", padding: "6px 14px", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "right" }}>
             <div style={{ fontSize: "0.57rem", color: "#546e8a", marginBottom: "2px", fontWeight: 700 }}>متراژ ملک</div>
             <div style={{ fontWeight: 900, color: "#2dd4bf", fontSize: "0.88rem" }}>
               {toPersianDigits(result.area.toLocaleString())} مترمربع
