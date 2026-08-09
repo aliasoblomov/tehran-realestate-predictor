@@ -15,6 +15,7 @@ import {
   Wind,
   Navigation,
   Train,
+  Building,
   Info,
   Download,
 } from "lucide-react";
@@ -69,6 +70,7 @@ export interface SpatialFeatures {
   air_quality_aqi: number;
   traffic_zone_status: number;
   urban_decay_class: number;
+  nearest_metro_station?: string;
 }
 
 export interface PredictionResult {
