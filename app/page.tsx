@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Navbar from "./components/Navbar";
 import PredictionForm, { FormValues, toPersianDigits } from "./components/PredictionForm";
 import ResultCard, { PredictionResult } from "./components/ResultCard";
+import { Sparkles, TrendingUp, MapPin, Home as HomeIcon, X } from "lucide-react";
 
 // FastAPI backend URL — set NEXT_PUBLIC_API_URL in Vercel environment variables
 const API_URL =
@@ -57,6 +58,7 @@ export default function Home() {
   const [debugMode, setDebugMode] = useState(false);
   const [lastFormValues, setLastFormValues] = useState<FormValues | null>(null);
   const [addressName, setAddressName] = useState<string>("");
+  const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
 
   // Read ?debug=true from URL
   useEffect(() => {
@@ -209,54 +211,80 @@ export default function Home() {
           maxWidth: "1440px",
           margin: "0 auto",
           width: "100%",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          flexWrap: "wrap",
+          gap: "16px",
         }}
       >
-        <h1
+        <div>
+          <h1
+            style={{
+              fontSize: "clamp(1.4rem, 3vw, 2.2rem)",
+              fontWeight: 900,
+              lineHeight: 1.15,
+              margin: 0,
+            }}
+          >
+            ارزیاب هوشمند ملک{" "}
+            <span className="gradient-text">تهران</span>
+            {debugMode && (
+              <span
+                style={{
+                  marginRight: "12px",
+                  fontSize: "0.6rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  background: "rgba(34,197,94,0.12)",
+                  border: "1px solid rgba(34,197,94,0.3)",
+                  color: "#22c55e",
+                  borderRadius: "6px",
+                  padding: "3px 8px",
+                  verticalAlign: "middle",
+                }}
+              >
+                DEBUG MODE
+              </span>
+            )}
+          </h1>
+          <p style={{ color: "#546e8a", fontSize: "0.82rem", marginTop: "6px", maxWidth: "560px", marginBottom: 0 }}>
+            ارزیابی قیمت ملک با مدل XGBoost V2 · داده‌های مکانی BigQuery · سیگنال‌های اقتصادی زنده
+          </p>
+        </div>
+        
+        <button
+          className="no-print"
+          onClick={() => setIsHowItWorksOpen(true)}
           style={{
-            fontSize: "clamp(1.4rem, 3vw, 2.2rem)",
-            fontWeight: 900,
-            lineHeight: 1.15,
-            margin: 0,
+            display: "flex", alignItems: "center", gap: "6px",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "12px",
+            padding: "8px 16px",
+            color: "#edf2f7",
+            fontSize: "0.8rem",
+            fontWeight: 700,
+            cursor: "pointer",
+            transition: "background 0.2s"
           }}
+          onMouseOver={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+          onMouseOut={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
         >
-          ارزیاب هوشمند ملک{" "}
-          <span className="gradient-text">تهران</span>
-          {debugMode && (
-            <span
-              style={{
-                marginRight: "12px",
-                fontSize: "0.6rem",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                background: "rgba(34,197,94,0.12)",
-                border: "1px solid rgba(34,197,94,0.3)",
-                color: "#22c55e",
-                borderRadius: "6px",
-                padding: "3px 8px",
-                verticalAlign: "middle",
-              }}
-            >
-              DEBUG MODE
-            </span>
-          )}
-        </h1>
-        <p style={{ color: "#546e8a", fontSize: "0.82rem", marginTop: "6px", maxWidth: "560px" }}>
-          ارزیابی قیمت ملک با مدل XGBoost V2 · داده‌های مکانی BigQuery · سیگنال‌های اقتصادی زنده
-        </p>
+          <Sparkles size={14} color="#2dd4bf" />
+          <span>چگونه کار میکند؟</span>
+        </button>
       </div>
 
       {/* ── Main Layout ── */}
       <div
+        className="grid grid-cols-1 lg:grid-cols-[1fr_380px] px-4 md:px-6 pb-6 gap-4"
         style={{
           flex: 1,
-          padding: "10px 24px 24px",
           maxWidth: "1440px",
+          overflowX: "hidden",
           margin: "0 auto",
           width: "100%",
-          display: "grid",
-          gridTemplateColumns: "1fr 380px",
-          gridTemplateRows: "1fr auto",
-          gap: "16px",
         }}
         id="main-grid"
       >
@@ -296,7 +324,7 @@ export default function Home() {
         </div>
 
         {/* Results panel — full width */}
-        <div style={{ gridColumn: "1 / -1" }} id="results-panel">
+        <div className="lg:col-span-2" id="results-panel">
           <ResultCard
             result={result}
             error={error}
@@ -309,21 +337,12 @@ export default function Home() {
 
       {/* ── Responsive CSS ── */}
       <style>{`
-        @media (max-width: 900px) {
-          #main-grid {
-            grid-template-columns: 1fr !important;
-            grid-template-rows: auto auto auto !important;
-          }
+        @media (max-width: 1024px) {
           #map-panel {
             height: clamp(300px, 50vw, 440px) !important;
           }
           #form-panel {
             max-height: none !important;
-          }
-        }
-        @media (max-width: 600px) {
-          #main-grid {
-            padding: 8px 12px 16px !important;
           }
         }
         @media print {
@@ -369,6 +388,89 @@ export default function Home() {
       <footer className="no-print" style={{ textAlign: "center", padding: "20px", color: "#334155", fontSize: "0.7rem", borderTop: "1px solid rgba(255,255,255,0.02)", marginTop: "20px", opacity: 0.6 }}>
          developer contact: <a href="mailto:aliizadi27@gmail.com" style={{ color: "inherit", textDecoration: "none" }}>aliizadi27@gmail.com</a>
       </footer>
+
+      {/* ── How it Works Modal ── */}
+      {isHowItWorksOpen && (
+        <div
+          className="no-print"
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(15, 17, 23, 0.8)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            animation: "fadeUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) both",
+          }}
+          onClick={() => setIsHowItWorksOpen(false)}
+        >
+          <div
+            style={{
+              background: "#161b27",
+              border: "1px solid rgba(245, 158, 11, 0.22)",
+              borderRadius: "24px",
+              maxWidth: "500px",
+              width: "100%",
+              padding: "32px",
+              position: "relative",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.4), 0 0 40px rgba(245, 158, 11, 0.1)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsHowItWorksOpen(false)}
+              style={{
+                position: "absolute", top: "20px", right: "20px",
+                background: "rgba(255,255,255,0.05)",
+                border: "none",
+                borderRadius: "50%",
+                width: "32px", height: "32px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#9ab0c7", cursor: "pointer",
+                transition: "background 0.2s"
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+              onMouseOut={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+            >
+              <X size={16} />
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "26px" }}>
+              <Sparkles size={22} color="#f59e0b" />
+              <h2 style={{ fontSize: "1.3rem", fontWeight: 900, margin: 0, color: "#edf2f7" }}>هوش مصنوعی چگونه قیمت را تخمین می‌زند؟</h2>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
+              <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                <div style={{ background: "rgba(245,158,11,0.1)", padding: "10px", borderRadius: "12px", color: "#f59e0b" }}><TrendingUp size={20} /></div>
+                <div>
+                  <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#edf2f7", marginBottom: "4px", marginTop: "0" }}>شاخص‌های کلان (Macro)</h3>
+                  <p style={{ fontSize: "0.82rem", color: "#9ab0c7", margin: 0, lineHeight: 1.6 }}>تورم، قیمت ارز، و ریسک‌های ژئوپلیتیک که پایه‌ی اقتصاد مسکن را تشکیل می‌دهند.</p>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                <div style={{ background: "rgba(45,212,191,0.1)", padding: "10px", borderRadius: "12px", color: "#2dd4bf" }}><MapPin size={20} /></div>
+                <div>
+                  <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#edf2f7", marginBottom: "4px", marginTop: "0" }}>ویژگی‌های محلی (Location)</h3>
+                  <p style={{ fontSize: "0.82rem", color: "#9ab0c7", margin: 0, lineHeight: 1.6 }}>فاصله تا مترو و بزرگراه، کیفیت هوا (AQI)، ریسک زلزله، قرارگیری در بافت فرسوده و طرح ترافیک.</p>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                <div style={{ background: "rgba(249,115,22,0.1)", padding: "10px", borderRadius: "12px", color: "#f97316" }}><HomeIcon size={20} /></div>
+                <div>
+                  <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#edf2f7", marginBottom: "4px", marginTop: "0" }}>مشخصات ملکی (Property)</h3>
+                  <p style={{ fontSize: "0.82rem", color: "#9ab0c7", margin: 0, lineHeight: 1.6 }}>متراژ، سن بنا، طبقه، آسانسور و پارکینگ که ضریب ارزش نهایی ملک را تعیین می‌کنند.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

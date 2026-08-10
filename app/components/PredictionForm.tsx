@@ -191,7 +191,7 @@ function Pill({ label, selected, onClick, id }: { label: string; selected: boole
         background: selected ? "rgba(249,115,22,0.16)" : "rgba(255,255,255,0.03)",
         border: selected ? "1.5px solid rgba(249,115,22,0.55)" : "1px solid rgba(255,255,255,0.08)",
         borderRadius: "100px",
-        padding: "8px 16px",
+        padding: "10px 18px",
         cursor: "pointer",
         fontSize: "0.82rem",
         fontWeight: 800,
@@ -320,7 +320,7 @@ function Stepper({
           type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
           style={{
-            width: "34px", height: "34px",
+            width: "42px", height: "42px",
             borderRadius: "10px",
             background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -348,7 +348,7 @@ function Stepper({
           type="button"
           onClick={() => onChange(Math.min(max, value + 1))}
           style={{
-            width: "34px", height: "34px",
+            width: "42px", height: "42px",
             borderRadius: "10px",
             background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -567,7 +567,7 @@ export default function PredictionForm({
                 fontSize: "2.2rem",
                 fontWeight: 900,
                 textAlign: "center",
-                padding: "8px 12px",
+                padding: "12px 16px",
                 maxWidth: "150px",
                 color: "#f59e0b",
                 direction: "ltr",
@@ -596,7 +596,7 @@ export default function PredictionForm({
                   background: vals.area === v ? "rgba(245,158,11,0.14)" : "rgba(255,255,255,0.04)",
                   border: vals.area === v ? "1px solid rgba(245,158,11,0.45)" : "1px solid rgba(255,255,255,0.07)",
                   borderRadius: "10px",
-                  padding: "5px 10px",
+                  padding: "8px 14px",
                   cursor: "pointer",
                   fontSize: "0.72rem",
                   fontWeight: 700,
@@ -681,7 +681,7 @@ export default function PredictionForm({
                     background: isSelected ? "rgba(249,115,22,0.18)" : "rgba(255,255,255,0.03)",
                     border: isSelected ? "1.5px solid #f97316" : "1px solid rgba(255,255,255,0.07)",
                     borderRadius: "100px",
-                    padding: "6px 14px",
+                    padding: "10px 16px",
                     fontSize: "0.78rem",
                     fontWeight: isSelected ? 800 : 600,
                     color: isSelected ? "#f97316" : "#9ab0c7",

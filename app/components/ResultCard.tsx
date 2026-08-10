@@ -211,13 +211,14 @@ function SeismicScale({ level }: { level: number }) {
   );
 }
 
-// ─── Distance Badge (with Sweet Spot) ────────────────────────────────────────
+// ─── Distance Badge (with Sweet Spot & Danger) ────────────────────────────────────────
 function DistanceBadge({
-  meters, sweetSpotMin, sweetSpotMax, label,
+  meters, sweetSpotMin, sweetSpotMax, label, dangerMax, dangerLabel
 }: {
-  meters: number; sweetSpotMin: number; sweetSpotMax: number; label: string;
+  meters: number; sweetSpotMin: number; sweetSpotMax: number; label: string; dangerMax?: number; dangerLabel?: string;
 }) {
   const isSweetSpot = meters >= sweetSpotMin && meters <= sweetSpotMax;
+  const isDanger = dangerMax !== undefined && meters < dangerMax;
   const distText = meters >= 1000
     ? `${toPersianDigits((meters / 1000).toFixed(1))} کیلومتر`
     : `${toPersianDigits(Math.round(meters))} متر`;
@@ -240,6 +241,21 @@ function DistanceBadge({
           }}
         >
           ✦ نقطه طلایی {label}
+        </span>
+      )}
+      {isDanger && dangerLabel && (
+        <span
+          style={{
+            background: "rgba(249, 115, 22, 0.12)",
+            border: "1px solid rgba(249, 115, 22, 0.35)",
+            color: "#f97316",
+            borderRadius: "100px",
+            padding: "2px 9px",
+            fontSize: "0.62rem",
+            fontWeight: 800,
+          }}
+        >
+          {dangerLabel}
         </span>
       )}
     </div>
@@ -353,7 +369,7 @@ function MarketPulseWidget({ pulse, basePrice }: {
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
         {/* District Average */}
         <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "14px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -437,7 +453,7 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
       icon: <Navigation size={14} />,
       label: "فاصله تا بزرگراه",
       tooltip: "فاصله بین ۲۰۰ تا ۹۰۰ متر از بزرگراه، دسترسی عالی بدون سر و صدا ایجاد می‌کند.",
-      value: <DistanceBadge meters={spatial.dist_to_highway_m} sweetSpotMin={200} sweetSpotMax={900} label="🛣️" />,
+      value: <DistanceBadge meters={spatial.dist_to_highway_m} sweetSpotMin={200} sweetSpotMax={900} label="🛣️" dangerMax={200} dangerLabel="پر سر و صدا 🔊🚗" />,
     },
     {
       icon: <Wind size={14} />,
@@ -861,7 +877,7 @@ export default function ResultCard({
       </div>
 
       {/* ── Metric Cards ── */}
-      <div className="avoid-break" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+      <div className="avoid-break grid grid-cols-1 md:grid-cols-3 gap-[10px]">
         <MetricCard
           label="قیمت پایه / مترمربع"
           value={formatPersianCurrency(result.base_price_per_sqm)}
