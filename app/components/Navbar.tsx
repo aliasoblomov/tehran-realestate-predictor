@@ -33,21 +33,16 @@ export default function Navbar({ usdRate }: NavbarProps) {
       >
         {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
+          <img
+            src="/logo.png"
+            alt="Ajor AI Logo"
             style={{
               width: "36px",
               height: "36px",
-              borderRadius: "12px",
-              background: "linear-gradient(135deg, #e05a3d, #c24127)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 0 18px rgba(224, 90, 61, 0.42)",
-              flexShrink: 0,
+              objectFit: "contain",
+              filter: "drop-shadow(0 0 12px rgba(224, 90, 61, 0.4))"
             }}
-          >
-            <MapPin size={16} color="#fff" />
-          </div>
+          />
           <div>
             <div
               style={{

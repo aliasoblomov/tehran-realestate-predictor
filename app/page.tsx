@@ -305,10 +305,8 @@ export default function Home() {
           className="glass-card"
           style={{
             padding: "20px",
-            overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            maxHeight: result ? "auto" : "clamp(380px, 52vh, 600px)",
           }}
           id="form-panel"
         >
@@ -463,7 +461,7 @@ export default function Home() {
               <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
                 <div style={{ background: "rgba(249,115,22,0.1)", padding: "10px", borderRadius: "12px", color: "#f97316" }}><HomeIcon size={20} /></div>
                 <div>
-                  <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#edf2f7", marginBottom: "4px", marginTop: "0" }}>مشخصات ملکی (Property)</h3>
+                  <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#edf2f7", marginBottom: "4px", marginTop: "0" }}>مشخصات ملکی 🧱 (Property)</h3>
                   <p style={{ fontSize: "0.82rem", color: "#9ab0c7", margin: 0, lineHeight: 1.6 }}>متراژ، سن بنا، طبقه، آسانسور و پارکینگ که ضریب ارزش نهایی ملک را تعیین می‌کنند.</p>
                 </div>
               </div>
