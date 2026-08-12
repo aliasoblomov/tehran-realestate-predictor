@@ -834,21 +834,21 @@ export default function PredictionForm({
                           flexShrink: 0,
                         }}
                       />
-                      <div>
-                        <span style={{ fontSize: "0.8rem", fontWeight: isSelected ? 800 : 500, color: isSelected ? "#f8fafc" : "#9ab0c7" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, overflow: "hidden" }}>
+                        <span style={{ fontSize: "0.8rem", fontWeight: isSelected ? 800 : 500, color: isSelected ? "#f8fafc" : "#9ab0c7", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {c.name}
                         </span>
                         {idx === 0 && (
                           <span
                             style={{
-                              marginRight: "6px",
                               fontSize: "0.58rem",
                               fontWeight: 800,
                               background: "rgba(34,197,94,0.15)",
                               color: "#22c55e",
                               border: "1px solid rgba(34,197,94,0.3)",
                               borderRadius: "100px",
-                              padding: "1px 7px",
+                              padding: "3px 8px",
+                              flexShrink: 0,
                             }}
                           >
                             نزدیک‌ترین
@@ -939,10 +939,10 @@ export default function PredictionForm({
       <div
         key={step}
         style={{
-          flex: 1,
           animation: "fadeUp 0.3s cubic-bezier(0.4,0,0.2,1) both",
           overflowY: "auto",
-          minHeight: "340px",
+          height: "360px",
+          minHeight: "360px",
         }}
       >
         {stepContent[step]}
