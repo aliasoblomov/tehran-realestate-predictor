@@ -161,7 +161,7 @@ function AQIBadge({ aqi }: { aqi: number }) {
                  { label: "ناسالم", color: "#f43f5e", bg: "rgba(244,63,94,0.12)", border: "rgba(244,63,94,0.35)" };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexDirection: "row-reverse" }}>
       <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#edf2f7", direction: "ltr" }}>
         {toPersianDigits(Math.round(aqi))}
       </span>
@@ -189,7 +189,7 @@ function SeismicScale({ level }: { level: number }) {
   const labels = ["خیلی کم", "کم", "متوسط", "بالا"];
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexDirection: "row-reverse" }}>
       <div style={{ display: "flex", gap: "4px" }}>
         {[1, 2, 3, 4].map((dot) => (
           <div
@@ -439,7 +439,7 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
       label: "فاصله تا ایستگاه مترو",
       tooltip: "دسترسی پیاده به مترو (کمتر از ۵۰۰ متر) ارزش ملک را تا ۱۵٪ افزایش می‌دهد.",
       value: (
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-end" }}>
           <DistanceBadge meters={spatial.dist_to_metro_m} sweetSpotMin={0} sweetSpotMax={500} label="🚇" />
           {spatial.nearest_metro_station && (
             <span style={{ fontSize: "0.65rem", color: "#546e8a", fontWeight: 700 }}>
@@ -511,6 +511,8 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "12px",
               padding: "10px 12px",
               background: "rgba(255,255,255,0.02)",
               border: "1px solid rgba(255,255,255,0.05)",
@@ -540,7 +542,9 @@ function SpatialPanel({ spatial }: { spatial: SpatialFeatures }) {
                 <Tooltip text={row.tooltip} />
               </div>
             </div>
-            <div style={{ textAlign: "left" }}>{row.value}</div>
+            <div style={{ flex: "1 1 auto", display: "flex", justifyContent: "flex-end", textAlign: "left" }}>
+              {row.value}
+            </div>
           </div>
         ))}
       </div>
