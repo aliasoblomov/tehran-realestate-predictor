@@ -249,7 +249,7 @@ export default function Home() {
             )}
           </h1>
           <p style={{ color: "#546e8a", fontSize: "0.82rem", marginTop: "6px", maxWidth: "560px", marginBottom: 0 }}>
-            ارزیابی قیمت ملک با مدل XGBoost V2 · داده‌های مکانی BigQuery · سیگنال‌های اقتصادی زنده
+            ارزیابی قیمت ملک در تهران با استفاده از داده های ملکی، محلی و اقتصاد کلان.
           </p>
         </div>
         
@@ -291,7 +291,7 @@ export default function Home() {
         {/* Map panel */}
         <div
           className="glass-card"
-          style={{ height: "clamp(380px, 52vh, 600px)", padding: "4px", overflow: "hidden" }}
+          style={{ height: "100%", minHeight: "400px", padding: "4px", overflow: "hidden" }}
           id="map-panel"
         >
           <MapComponent
