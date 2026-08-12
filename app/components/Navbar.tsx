@@ -38,11 +38,11 @@ export default function Navbar({ usdRate }: NavbarProps) {
               width: "36px",
               height: "36px",
               borderRadius: "12px",
-              background: "linear-gradient(135deg, #f97316, #ea580c)",
+              background: "linear-gradient(135deg, #e05a3d, #c24127)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 18px rgba(249, 115, 22, 0.42)",
+              boxShadow: "0 0 18px rgba(224, 90, 61, 0.42)",
               flexShrink: 0,
             }}
           >
@@ -57,7 +57,7 @@ export default function Navbar({ usdRate }: NavbarProps) {
                 color: "#edf2f7",
               }}
             >
-              تهران<span className="gradient-text">AI</span>
+              Ajor <span className="gradient-text">AI</span>
             </div>
             <div
               style={{
@@ -74,8 +74,8 @@ export default function Navbar({ usdRate }: NavbarProps) {
 
         {/* Center badge */}
         <div
+          className="hidden md:flex"
           style={{
-            display: "flex",
             alignItems: "center",
             gap: "8px",
             background: "rgba(45, 212, 191, 0.08)",

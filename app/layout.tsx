@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ارزیاب هوشمند ملک تهران | پیش‌بینی قیمت مسکن با هوش مصنوعی",
+  title: "Ajor AI | ارزیاب هوشمند ملک تهران",
   description:
     "قیمت ملک در تهران را با استفاده از یادگیری ماشین، داده‌های اقتصادی زنده و تحلیل مکانی پیش‌بینی کنید. روی نقشه کلیک کنید و ارزیابی دریافت کنید.",
   keywords: [
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "ML property valuation",
   ],
   openGraph: {
-    title: "ارزیاب هوشمند ملک تهران",
+    title: "Ajor AI | ارزیاب هوشمند ملک تهران",
     description:
       "ارزیابی هوشمند ملک در تهران با مدل XGBoost و داده‌های مکانی BigQuery.",
     type: "website",
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl">
       <head>
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

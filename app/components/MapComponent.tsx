@@ -145,10 +145,21 @@ export default function MapComponent({
           const data = await res.json();
           let addrStr = "آدرس نامشخص";
           if (data.address) {
-            const parts: string[] = [];
-            if (data.address.suburb || data.address.neighbourhood) parts.push(data.address.suburb || data.address.neighbourhood);
-            if (data.address.road) parts.push(data.address.road);
-            if (parts.length > 0) addrStr = parts.join("، ");
+            const addr = data.address;
+            const city = addr.city || addr.town || addr.state || "تهران";
+            let regionText = "";
+            const suburb = addr.suburb || addr.municipality || addr.city_district || "";
+            const regionMatch = suburb.match(/منطقه\s*\d+/);
+            if (regionMatch) regionText = regionMatch[0];
+            const nb = addr.neighbourhood || addr.residential || "";
+            const road = addr.road || "";
+            
+            const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+            const toFa = (n: string) => String(n).replace(/\d/g, (d) => persianDigits[parseInt(d, 10)]);
+            const plate = addr.house_number ? `پلاک ${toFa(addr.house_number)}` : "";
+
+            const addressParts = [city, regionText, nb, road, plate].filter(Boolean);
+            if (addressParts.length > 0) addrStr = addressParts.join("، ");
             else if (data.display_name) addrStr = data.display_name.split(",").slice(0, 2).join("، ");
           }
           setAddress(addrStr);
@@ -166,18 +177,22 @@ export default function MapComponent({
 
         let addrStr = "آدرس نامشخص";
         if (data.address) {
-          const parts: string[] = [];
-          if (data.address.suburb || data.address.neighbourhood) {
-            parts.push(data.address.suburb || data.address.neighbourhood);
-          }
-          if (data.address.road) {
-            parts.push(data.address.road);
-          }
-          if (parts.length > 0) {
-            addrStr = parts.join("، ");
-          } else if (data.display_name) {
-            addrStr = data.display_name.split(",").slice(0, 2).join("، ");
-          }
+          const addr = data.address;
+          const city = addr.city || addr.town || addr.state || "تهران";
+          let regionText = "";
+          const suburb = addr.suburb || addr.municipality || addr.city_district || "";
+          const regionMatch = suburb.match(/منطقه\s*\d+/);
+          if (regionMatch) regionText = regionMatch[0];
+          const nb = addr.neighbourhood || addr.residential || "";
+          const road = addr.road || "";
+          
+          const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+          const toFa = (n: string) => String(n).replace(/\d/g, (d) => persianDigits[parseInt(d, 10)]);
+          const plate = addr.house_number ? `پلاک ${toFa(addr.house_number)}` : "";
+
+          const addressParts = [city, regionText, nb, road, plate].filter(Boolean);
+          if (addressParts.length > 0) addrStr = addressParts.join("، ");
+          else if (data.display_name) addrStr = data.display_name.split(",").slice(0, 2).join("، ");
         }
         setAddress(addrStr);
 
@@ -261,40 +276,7 @@ export default function MapComponent({
         </div>
       )}
 
-      {/* Pinned address badge */}
-      {selectedLocation && (
-        <div
-          style={{
-            position: "absolute",
-            top: "12px",
-            right: "12px",
-            background: "rgba(15, 17, 23, 0.92)",
-            border: "1px solid rgba(249, 115, 22, 0.38)",
-            borderRadius: "12px",
-            padding: "9px 14px",
-            zIndex: 1000,
-            backdropFilter: "blur(14px)",
-            maxWidth: "200px",
-          }}
-          className="animate-fadeUp"
-        >
-          <div style={{ fontSize: "0.58rem", color: "#546e8a", marginBottom: "3px", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            موقعیت انتخابی
-          </div>
-          {address ? (
-            <div style={{ fontSize: "0.82rem", color: "#f97316", fontWeight: 700, lineHeight: 1.3 }}>
-              {address}
-            </div>
-          ) : (
-            <div style={{ fontSize: "0.72rem", color: "#546e8a", fontWeight: 600 }}>
-              در حال بارگذاری...
-            </div>
-          )}
-          <div style={{ fontSize: "0.6rem", color: "#546e8a", marginTop: "4px" }}>
-            {selectedLocation.lat.toFixed(4)}, {selectedLocation.lon.toFixed(4)}
-          </div>
-        </div>
-      )}
+      {/* Top right pinned badge removed for better mobile UX */}
     </div>
   );
 }

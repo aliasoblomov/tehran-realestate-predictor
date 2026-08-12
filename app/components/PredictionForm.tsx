@@ -942,6 +942,7 @@ export default function PredictionForm({
           flex: 1,
           animation: "fadeUp 0.3s cubic-bezier(0.4,0,0.2,1) both",
           overflowY: "auto",
+          minHeight: "340px",
         }}
       >
         {stepContent[step]}

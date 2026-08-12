@@ -228,7 +228,7 @@ export default function Home() {
             }}
           >
             ارزیاب هوشمند ملک{" "}
-            <span className="gradient-text">تهران</span>
+            <span className="gradient-text">Ajor AI</span>
             {debugMode && (
               <span
                 style={{
