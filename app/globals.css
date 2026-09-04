@@ -68,17 +68,16 @@ body {
   border-radius: var(--radius-xl);
 }
 
-/* ── Fix sub-pixel "puzzle" grid lines between tiles ── */
-.leaflet-tile {
-  outline: 1px solid transparent;
-  /* Eliminate 1px gap artifacts at fractional zoom levels */
-  margin: -1px !important;
-  padding: 1px !important;
-}
-
-/* Ensure the tile pane doesn't clip the overlap fix */
+/* ── Fix sub-pixel gaps between map tiles ── */
 .leaflet-tile-pane {
   will-change: transform;
+}
+
+.leaflet-tile {
+  image-rendering: -webkit-optimize-contrast;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 
