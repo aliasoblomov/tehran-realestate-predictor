@@ -7,10 +7,17 @@ import PredictionForm, { FormValues, toPersianDigits } from "./components/Predic
 import ResultCard, { PredictionResult } from "./components/ResultCard";
 import { Sparkles, TrendingUp, MapPin, Home as HomeIcon, X } from "lucide-react";
 
-// FastAPI backend URL — set NEXT_PUBLIC_API_URL in Vercel environment variables
+// Use the Vercel reverse proxy so requests originate from Vercel (not Iranian IPs)
+// next.config.ts rewrites /api/proxy-predict → Cloud Run backend
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
   "http://localhost:8000";
+
+// The predict endpoint - goes through Vercel proxy in production
+const PREDICT_ENDPOINT =
+  typeof window !== "undefined" && window.location.hostname !== "localhost"
+    ? "/api/proxy-predict"
+    : `${API_URL}/predict`;
 
 // Dynamic import of MapComponent to avoid SSR
 const MapComponent = dynamic(() => import("./components/MapComponent"), {
@@ -157,7 +164,7 @@ export default function Home() {
           payload.selected_neighborhood_slug = overrideSlug;
         }
 
-        const response = await fetch(`${API_URL}/predict`, {
+        const response = await fetch(PREDICT_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
