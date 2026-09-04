@@ -880,6 +880,25 @@ export default function ResultCard({
         <ConfidenceBar low={result.final_total_low} mid={result.final_total_price} high={result.final_total_high} />
       </div>
 
+      {/* ── Model Cutoff Notice Banner ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "8px 14px",
+          background: "rgba(245,158,11,0.06)",
+          border: "1px solid rgba(245,158,11,0.18)",
+          borderRadius: "10px",
+          animation: "fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) 400ms both",
+        }}
+      >
+        <span style={{ fontSize: "0.7rem", flexShrink: 0 }}>ℹ️</span>
+        <span style={{ fontSize: "0.68rem", color: "#94a3b8", lineHeight: 1.55 }}>
+          نتایج بر اساس مدل های train شده تا تیر ماه ۱۴۰۵ می باشد.
+        </span>
+      </div>
+
       {/* ── Metric Cards ── */}
       <div className="avoid-break grid grid-cols-1 md:grid-cols-3 gap-[10px]">
         <MetricCard

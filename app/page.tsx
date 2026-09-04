@@ -176,13 +176,19 @@ export default function Home() {
         if (data.usd_rate) setUsdRate(data.usd_rate);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        const isCors =
-          msg.includes("Failed to fetch") || msg.includes("NetworkError");
-        setError(
-          isCors
-            ? `اتصال به API در ${API_URL} ممکن نیست. NEXT_PUBLIC_API_URL را بررسی کنید.`
-            : msg
-        );
+        const status = (err as Record<string, number | undefined>)?.status;
+        const isCors = msg.includes("Failed to fetch") || msg.includes("NetworkError");
+        const isBigQuery = msg.includes("403") || msg.includes("Forbidden") || msg.includes("PERMISSION_DENIED");
+        const isCorsBlocked = isCors || msg.includes("CORS");
+        const detailed = [
+          isCorsBlocked ? `نتوانستم به API دسترسی پیدا کنم (CORS / Network Error).` : null,
+          isBigQuery ? `دسترسی به BigQuery مسدود شد (403 Forbidden). IP یا VPN بلاک شده.` : null,
+          status ? `HTTP Status: ${status}` : null,
+          `Detail: ${msg}`,
+          `API Endpoint: ${API_URL}/predict`,
+        ].filter(Boolean).join(" | ");
+        console.error("[Ajor AI] Prediction error:", { msg, status, err, endpoint: `${API_URL}/predict` });
+        setError(detailed || msg);
       } finally {
         setIsLoading(false);
       }
