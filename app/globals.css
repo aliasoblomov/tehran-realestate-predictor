@@ -71,8 +71,6 @@ body {
 /* ── Fix sub-pixel "puzzle" grid lines between tiles ── */
 .leaflet-tile {
   outline: 1px solid transparent;
-  /* Grayscale + slight sepia + reduced opacity = minimal muted look */
-  filter: grayscale(85%) sepia(15%) contrast(0.9) brightness(0.75) opacity(0.88);
   /* Eliminate 1px gap artifacts at fractional zoom levels */
   margin: -1px !important;
   padding: 1px !important;
