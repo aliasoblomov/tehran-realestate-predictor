@@ -56,12 +56,12 @@ export default function MapComponent({
       minZoom: 11,
     });
 
-    // ── CARTO Voyager — clean, vibrant, excellent Persian labels ──
+    // ── OpenStreetMap — free, no API key required ──
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
         maxZoom: 19,
-        subdomains: "abcd",
+        attribution: "&copy; OpenStreetMap contributors",
       }
     ).addTo(map);
 

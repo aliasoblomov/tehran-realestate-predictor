@@ -885,18 +885,38 @@ export default function ResultCard({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          padding: "8px 14px",
-          background: "rgba(245,158,11,0.06)",
-          border: "1px solid rgba(245,158,11,0.18)",
-          borderRadius: "10px",
+          gap: "10px",
+          padding: "10px 14px",
+          background: "linear-gradient(135deg, rgba(245,158,11,0.07) 0%, rgba(245,158,11,0.03) 100%)",
+          border: "1px solid rgba(245,158,11,0.15)",
+          borderRadius: "12px",
           animation: "fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) 400ms both",
         }}
       >
-        <span style={{ fontSize: "0.7rem", flexShrink: 0 }}>ℹ️</span>
-        <span style={{ fontSize: "0.68rem", color: "#94a3b8", lineHeight: 1.55 }}>
-          نتایج بر اساس مدل های train شده تا تیر ماه ۱۴۰۵ می باشد.
-        </span>
+        <div
+          style={{
+            width: "28px",
+            height: "28px",
+            borderRadius: "8px",
+            background: "rgba(245,158,11,0.1)",
+            border: "1px solid rgba(245,158,11,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            fontSize: "0.8rem",
+          }}
+        >
+          🗓️
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+          <span style={{ fontSize: "0.6rem", fontWeight: 800, color: "rgba(245,158,11,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+            محدوده داده‌های آموزشی
+          </span>
+          <span style={{ fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.5 }}>
+            نتایج بر اساس مدل‌های train شده تا <span style={{ color: "#f59e0b", fontWeight: 700 }}>تیر ماه ۱۴۰۵</span> می‌باشد.
+          </span>
+        </div>
       </div>
 
       {/* ── Metric Cards ── */}
