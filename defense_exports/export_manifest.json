@@ -1,0 +1,23 @@
+{
+  "generator": "defense_exports/generate_exports.py",
+  "records_by_file": {
+    "district2_micro_points.json": 22,
+    "micro_feature_importance.json": 29,
+    "macro_feature_importance.json": 20,
+    "export_manifest.json": 1
+  },
+  "sources": [
+    "backend/main.py",
+    "backend/models/micro_model_v2.json",
+    "backend/models/macro_model_v2.json",
+    "backend/models/neighborhood_encoding_v2.json",
+    "app/utils/neighborhoods.ts",
+    "Phase2_Geospatial_Feature_Engineering.ipynb",
+    "phase4_Macro_model.ipynb"
+  ],
+  "predicted_q_ratio_min": 0.8464954495429993,
+  "predicted_q_ratio_max": 1.0589038133621216,
+  "missing_items": [
+    "No saved numeric SHAP summary table or monthly regional test prediction table in either notebook's outputs."
+  ]
+}

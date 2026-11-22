@@ -1,0 +1,118 @@
+[
+  {
+    "feature": "has_elevator",
+    "split_count": 4950
+  },
+  {
+    "feature": "has_parking",
+    "split_count": 4282
+  },
+  {
+    "feature": "is_price_converted",
+    "split_count": 5217
+  },
+  {
+    "feature": "is_villa",
+    "split_count": 1638
+  },
+  {
+    "feature": "land_size",
+    "split_count": 13801
+  },
+  {
+    "feature": "building_size",
+    "split_count": 43818
+  },
+  {
+    "feature": "rooms_count",
+    "split_count": 11475
+  },
+  {
+    "feature": "building_age",
+    "split_count": 28061
+  },
+  {
+    "feature": "location_latitude",
+    "split_count": 25437
+  },
+  {
+    "feature": "location_longitude",
+    "split_count": 21083
+  },
+  {
+    "feature": "location_radius",
+    "split_count": 7163
+  },
+  {
+    "feature": "commercial_density",
+    "split_count": 10473
+  },
+  {
+    "feature": "dist_to_metro",
+    "split_count": 20379
+  },
+  {
+    "feature": "dist_to_cbd",
+    "split_count": 16553
+  },
+  {
+    "feature": "dist_to_highway",
+    "split_count": 22301
+  },
+  {
+    "feature": "seismic_risk_level",
+    "split_count": 1762
+  },
+  {
+    "feature": "air_quality_aqi",
+    "split_count": 13349
+  },
+  {
+    "feature": "traffic_zone_status",
+    "split_count": 727
+  },
+  {
+    "feature": "urban_decay_class",
+    "split_count": 3485
+  },
+  {
+    "feature": "floor_elevator_penalty",
+    "split_count": 1484
+  },
+  {
+    "feature": "bonus_tod_livability",
+    "split_count": 13483
+  },
+  {
+    "feature": "penalty_traffic_nuisance",
+    "split_count": 7600
+  },
+  {
+    "feature": "suburban_metro_dependency",
+    "split_count": 15178
+  },
+  {
+    "feature": "highway_sweetspot",
+    "split_count": 1025
+  },
+  {
+    "feature": "region_id",
+    "split_count": 5609
+  },
+  {
+    "feature": "floor_num",
+    "split_count": 16967
+  },
+  {
+    "feature": "total_floors_num",
+    "split_count": 13049
+  },
+  {
+    "feature": "unit_per_floor_num",
+    "split_count": 8824
+  },
+  {
+    "feature": "neighborhood_encoded",
+    "split_count": 12928
+  }
+]

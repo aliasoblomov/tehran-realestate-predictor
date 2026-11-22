@@ -1,0 +1,82 @@
+[
+  {
+    "feature": "USD_Return_1M",
+    "split_count": 226
+  },
+  {
+    "feature": "USD_Return_3M",
+    "split_count": 83
+  },
+  {
+    "feature": "USD_Return_12M",
+    "split_count": 104
+  },
+  {
+    "feature": "USD_MA_Ratio_12",
+    "split_count": 87
+  },
+  {
+    "feature": "USD_Acceleration",
+    "split_count": 74
+  },
+  {
+    "feature": "Housing_to_USD_Lag_1",
+    "split_count": 429
+  },
+  {
+    "feature": "Housing_to_USD_Lag_3",
+    "split_count": 381
+  },
+  {
+    "feature": "Housing_to_USD_Lag_12",
+    "split_count": 335
+  },
+  {
+    "feature": "Housing_to_USD_ZScore_Lag_1",
+    "split_count": 520
+  },
+  {
+    "feature": "Coin_Bubble",
+    "split_count": 87
+  },
+  {
+    "feature": "Iran_GPR",
+    "split_count": 102
+  },
+  {
+    "feature": "Iran_GPR_MA3",
+    "split_count": 86
+  },
+  {
+    "feature": "M2_Growth_YoY_Lag_3",
+    "split_count": 74
+  },
+  {
+    "feature": "M2_Growth_Acceleration",
+    "split_count": 58
+  },
+  {
+    "feature": "Monetary_Excess",
+    "split_count": 93
+  },
+  {
+    "feature": "Inflation_General_YoY_Lag_3",
+    "split_count": 77
+  },
+  {
+    "feature": "TEDPIX_Return_3M",
+    "split_count": 73
+  },
+  {
+    "feature": "Construction_Cost_Real",
+    "split_count": 68
+  },
+  {
+    "feature": "Month_Sin",
+    "split_count": 43
+  },
+  {
+    "feature": "Month_Cos",
+    "split_count": 48
+  }
+]

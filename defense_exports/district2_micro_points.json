@@ -1,0 +1,248 @@
+{
+  "fixed_property": {
+    "area_sqm": 100,
+    "age_years": 10,
+    "rooms": 2,
+    "floor": 4,
+    "total_floors": 5,
+    "has_elevator": true,
+    "has_parking": true,
+    "has_warehouse": true,
+    "is_rebuilt": false,
+    "district_id": 2
+  },
+  "model_file": "backend/models/micro_model_v2.json",
+  "feature_order": [
+    "has_elevator",
+    "has_parking",
+    "is_price_converted",
+    "is_villa",
+    "land_size",
+    "building_size",
+    "rooms_count",
+    "building_age",
+    "location_latitude",
+    "location_longitude",
+    "location_radius",
+    "commercial_density",
+    "dist_to_metro",
+    "dist_to_cbd",
+    "dist_to_highway",
+    "seismic_risk_level",
+    "air_quality_aqi",
+    "traffic_zone_status",
+    "urban_decay_class",
+    "floor_elevator_penalty",
+    "bonus_tod_livability",
+    "penalty_traffic_nuisance",
+    "suburban_metro_dependency",
+    "highway_sweetspot",
+    "region_id",
+    "floor_num",
+    "total_floors_num",
+    "unit_per_floor_num",
+    "neighborhood_encoded"
+  ],
+  "inference_notes": "Raw Booster prediction. All distinct District 2 neighborhoods are ordered by local neighborhood encoding. Only coordinates and encoding vary. The API normally queries BigQuery for encoding. Warehouse and rebuilt status are unused by this model. Apartment, sale, two units per floor.",
+  "notes": "Empty spatial input uses the feature engineer defaults: metro, highway and CBD distances 10000 m each, commercial density 0, urban decay 2, AQI 100, traffic zone 1, seismic risk 3. CBD is held at the feature engineer default instead of computing the query fallback from each coordinate.",
+  "points": [
+    {
+      "id": 1,
+      "slug": "parvaz",
+      "neighborhood_fa": "پرواز",
+      "lat": 35.789352,
+      "lon": 51.3541,
+      "neighborhood_encoded": 0.7237142096703556,
+      "predicted_q_ratio": 0.8464954495429993
+    },
+    {
+      "id": 2,
+      "slug": "sattarkhan",
+      "neighborhood_fa": "ستارخان",
+      "lat": 35.723278,
+      "lon": 51.356926,
+      "neighborhood_encoded": 0.792733383045679,
+      "predicted_q_ratio": 0.8645909428596497
+    },
+    {
+      "id": 3,
+      "slug": "farahzad",
+      "neighborhood_fa": "فرحزاد",
+      "lat": 35.789047,
+      "lon": 51.34448,
+      "neighborhood_encoded": 0.7934474216685299,
+      "predicted_q_ratio": 0.9174457788467407
+    },
+    {
+      "id": 4,
+      "slug": "baqerkhan",
+      "neighborhood_fa": "باقرخان",
+      "lat": 35.716763,
+      "lon": 51.37618,
+      "neighborhood_encoded": 0.8118614491616747,
+      "predicted_q_ratio": 0.8984097242355347
+    },
+    {
+      "id": 5,
+      "slug": "shadman",
+      "neighborhood_fa": "شادمان",
+      "lat": 35.70762,
+      "lon": 51.36435,
+      "neighborhood_encoded": 0.8253144173371578,
+      "predicted_q_ratio": 0.8762519955635071
+    },
+    {
+      "id": 6,
+      "slug": "shahrak-e-koohsar",
+      "neighborhood_fa": "شهرک کوهسار",
+      "lat": 35.781746,
+      "lon": 51.33294,
+      "neighborhood_encoded": 0.8303451931725843,
+      "predicted_q_ratio": 0.9097625613212585
+    },
+    {
+      "id": 7,
+      "slug": "eivanak",
+      "neighborhood_fa": "ایوانک",
+      "lat": 35.756733,
+      "lon": 51.35456,
+      "neighborhood_encoded": 0.8304410564748799,
+      "predicted_q_ratio": 0.9004251956939697
+    },
+    {
+      "id": 8,
+      "slug": "saadat-abad",
+      "neighborhood_fa": "سعادت‌آباد",
+      "lat": 35.781883,
+      "lon": 51.3749,
+      "neighborhood_encoded": 0.8336378215966335,
+      "predicted_q_ratio": 0.9453712105751038
+    },
+    {
+      "id": 9,
+      "slug": "gisha",
+      "neighborhood_fa": "گیشا",
+      "lat": 35.738556,
+      "lon": 51.37743,
+      "neighborhood_encoded": 0.8368397121296887,
+      "predicted_q_ratio": 0.9144725203514099
+    },
+    {
+      "id": 10,
+      "slug": "marzdaran",
+      "neighborhood_fa": "مرزداران",
+      "lat": 35.739033,
+      "lon": 51.34062,
+      "neighborhood_encoded": 0.8370802476077953,
+      "predicted_q_ratio": 0.874642550945282
+    },
+    {
+      "id": 11,
+      "slug": "university-of-sharif",
+      "neighborhood_fa": "دانشگاه شریف",
+      "lat": 35.705585,
+      "lon": 51.35292,
+      "neighborhood_encoded": 0.8513084922687665,
+      "predicted_q_ratio": 0.9066784381866455
+    },
+    {
+      "id": 12,
+      "slug": "sharara",
+      "neighborhood_fa": "شهرآرا",
+      "lat": 35.71979,
+      "lon": 51.37151,
+      "neighborhood_encoded": 0.8526008007075084,
+      "predicted_q_ratio": 0.9544855952262878
+    },
+    {
+      "id": 13,
+      "slug": "aseman",
+      "neighborhood_fa": "آسمان",
+      "lat": 35.778248,
+      "lon": 51.35162,
+      "neighborhood_encoded": 0.859814580398142,
+      "predicted_q_ratio": 1.0102384090423584
+    },
+    {
+      "id": 14,
+      "slug": "shahrak-e-jandarmeri",
+      "neighborhood_fa": "شهرک ژاندارمری",
+      "lat": 35.739113,
+      "lon": 51.358753,
+      "neighborhood_encoded": 0.8640736345847295,
+      "predicted_q_ratio": 0.9533692598342896
+    },
+    {
+      "id": 15,
+      "slug": "daryan-no",
+      "neighborhood_fa": "دریان نو",
+      "lat": 35.713863,
+      "lon": 51.35906,
+      "neighborhood_encoded": 0.8644386240345674,
+      "predicted_q_ratio": 0.9490978717803955
+    },
+    {
+      "id": 16,
+      "slug": "tohid",
+      "neighborhood_fa": "توحید",
+      "lat": 35.70471,
+      "lon": 51.372128,
+      "neighborhood_encoded": 0.8727508691874049,
+      "predicted_q_ratio": 0.9450956583023071
+    },
+    {
+      "id": 17,
+      "slug": "tarasht",
+      "neighborhood_fa": "طرشت",
+      "lat": 35.706665,
+      "lon": 51.34296,
+      "neighborhood_encoded": 0.8799190699517961,
+      "predicted_q_ratio": 0.9241370558738708
+    },
+    {
+      "id": 18,
+      "slug": "sharif",
+      "neighborhood_fa": "شریف",
+      "lat": 35.74972,
+      "lon": 51.132893,
+      "neighborhood_encoded": 0.8821371432855,
+      "predicted_q_ratio": 0.8764035105705261
+    },
+    {
+      "id": 19,
+      "slug": "tehranvila",
+      "neighborhood_fa": "تهران ویلا",
+      "lat": 35.7226,
+      "lon": 51.366577,
+      "neighborhood_encoded": 0.894103460437426,
+      "predicted_q_ratio": 0.9525118470191956
+    },
+    {
+      "id": 20,
+      "slug": "sepehr",
+      "neighborhood_fa": "سپهر",
+      "lat": 35.768726,
+      "lon": 51.353603,
+      "neighborhood_encoded": 0.9024807980903382,
+      "predicted_q_ratio": 1.026136875152588
+    },
+    {
+      "id": 21,
+      "slug": "kuy-faraz",
+      "neighborhood_fa": "کوی فراز",
+      "lat": 35.796703,
+      "lon": 51.371002,
+      "neighborhood_encoded": 0.907650541814072,
+      "predicted_q_ratio": 1.026465654373169
+    },
+    {
+      "id": 22,
+      "slug": "darya",
+      "neighborhood_fa": "دریا",
+      "lat": 35.771034,
+      "lon": 51.37821,
+      "neighborhood_encoded": 0.9150388782781573,
+      "predicted_q_ratio": 1.0589038133621216
+    }
+  ]
+}
